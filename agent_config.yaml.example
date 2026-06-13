@@ -1,0 +1,23 @@
+# Band agent credentials — get these from app.band.ai/agents
+# Copy this file to agent_config.yaml and fill in your values
+# DO NOT commit agent_config.yaml (it is in .gitignore)
+
+scout:
+  agent_id: "your-scout-agent-uuid"
+  api_key: "your-scout-band-api-key"
+
+forensics:
+  agent_id: "your-forensics-agent-uuid"
+  api_key: "your-forensics-band-api-key"
+
+compliance:
+  agent_id: "your-compliance-agent-uuid"
+  api_key: "your-compliance-band-api-key"
+
+risk:
+  agent_id: "your-risk-agent-uuid"
+  api_key: "your-risk-band-api-key"
+
+synthesis:
+  agent_id: "your-synthesis-agent-uuid"
+  api_key: "your-synthesis-band-api-key"

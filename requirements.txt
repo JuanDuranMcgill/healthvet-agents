@@ -1,0 +1,6 @@
+band-sdk[langgraph]
+langchain-openai
+langchain-community
+langgraph
+python-dotenv
+duckduckgo-search
