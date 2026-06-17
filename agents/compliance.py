@@ -1,39 +1,43 @@
 import asyncio
 import logging
-import os
 from dotenv import load_dotenv
-
-logging.basicConfig(level=logging.INFO)
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 from band import Agent
 from band.adapters.langgraph import LangGraphAdapter
 from band.config import load_agent_config
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from agents.llm import make_llm
 
-SYSTEM_PROMPT = """You are Compliance, a regulatory standing agent in a healthcare vendor vetting system.
+logging.basicConfig(level=logging.INFO)
 
-When @handmorin/scout shares vendor findings and mentions you:
-1. Assess the vendor's regulatory standing based on what Scout found
-2. Check for mentions of: FDA clearances, ONC certifications, HIPAA compliance, SOC 2
-3. Flag any known regulatory violations, warning letters, or enforcement actions
-4. Note any missing certifications that would be expected for this type of vendor
+SYSTEM_PROMPT = """You are Compliance, a healthcare vendor regulatory analyst.
 
-Rate compliance standing as: COMPLIANT / PARTIAL / NON-COMPLIANT / UNKNOWN
+Your task: assess the vendor's regulatory standing based on the conversation and call band_send_message with your findings.
 
-When done, post your assessment and @mention @handmorin/risk with your findings."""
+Write this report:
+
+**COMPLIANCE REPORT: [Vendor Name]**
+- FDA Clearance: VERIFIED / NOT_FOUND / NOT_APPLICABLE — [one line]
+- ONC Certification: VERIFIED / NOT_FOUND / NOT_APPLICABLE — [one line]
+- HIPAA Compliance: VERIFIED / NO_BREACHES_FOUND / UNKNOWN — [one line]
+- SOC 2: VERIFIED / NOT_FOUND / CLAIMED_UNVERIFIED — [one line]
+- Active Litigation: YES / NO — [one line]
+- Regulatory Violations: YES / NO — [one line]
+- Overall Standing: COMPLIANT / PARTIAL / NON-COMPLIANT / UNKNOWN
+
+You MUST call band_send_message with:
+- mentions: ["@handmorin/gap"]
+- content: the report above + "Gap, please run your evidence gap analysis."
+
+Calling band_send_message is your only action. Call it exactly once. Do it now."""
 
 
 async def main():
     load_dotenv()
 
-    llm = ChatOpenAI(
-        base_url="https://api.aimlapi.com/v1",
-        api_key=os.getenv("AIML_API_KEY"),
-        model="gpt-4o-mini",
-    )
-
     adapter = LangGraphAdapter(
-        llm=llm,
+        llm=make_llm("gpt-4o-mini"),
         checkpointer=InMemorySaver(),
         custom_section=SYSTEM_PROMPT,
     )

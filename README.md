@@ -2,7 +2,7 @@
 
 **Band of Agents Hackathon 2026 · Track 3: Regulated & High-Stakes Workflows**
 
-A multi-agent system that automates healthcare technology vendor due diligence. Five specialized AI agents collaborate through Band to vet vendors that U.S. health systems are considering purchasing — a process that normally takes weeks of manual work.
+A multi-agent system that automates healthcare technology vendor due diligence. Six specialized AI agents collaborate through Band to vet vendors that U.S. health systems are considering purchasing — a process that normally takes weeks of manual work.
 
 ---
 
@@ -20,20 +20,23 @@ This takes 2–6 weeks and requires multiple specialized reviewers. Half the evi
 
 ## How It Works
 
-Five agents coordinate through a shared Band room, each handling a distinct part of the vetting process:
+Six agents coordinate through a shared Band room, each handling a distinct part of the vetting process:
 
 ```
-User → @Scout → searches web for references, breaches, news
-             ↓
-       @Forensics → reads submitted documents with vision (SOC 2, 510(k), diagrams)
-       @Compliance → checks FDA, ONC, HIPAA regulatory standing
-             ↓
-       @Risk → cross-checks everything, can VETO and send agents back to re-investigate
-             ↓
-       @Synthesis → generates final auditable vendor trust report
+User → @Scout → searches web for references, breaches, lawsuits, news
+                    ↓
+             @Forensics → analyzes document and certification evidence
+                    ↓
+             @Compliance → checks FDA, ONC, HIPAA, SOC 2 regulatory standing
+                    ↓
+               @Gap → maps every evidence category: VERIFIED / MISSING / CRITICAL
+                    ↓
+              @Risk → cross-references everything, makes final APPROVE / ESCALATE / REJECT
+                    ↓
+           @Synthesis → generates final auditable vendor trust report → @User
 ```
 
-The key coordination mechanic: **Risk has veto authority**. If it finds a contradiction between what Scout found, what Forensics read in the documents, and what Compliance determined — it posts a `VETO` and specific re-investigation directives back into the Band room. This non-linear loop is what makes Band necessary.
+The key coordination mechanic: **Risk has veto authority**. If it finds contradictions between Scout's research, Forensics' document findings, and Compliance's regulatory assessment, it posts a `VETO` and specific re-investigation directives back into the Band room.
 
 ---
 
@@ -41,24 +44,41 @@ The key coordination mechanic: **Risk has veto authority**. If it finds a contra
 
 | Agent | Model | Role |
 |---|---|---|
-| **Scout** | AI/ML API `gpt-4o-mini` | Web search: customer references, breach history, lawsuits, news |
-| **Forensics** | AI/ML API `gpt-4o` (vision) | Document analysis: SOC 2 certs, 510(k) clearances, architecture diagrams |
-| **Compliance** | AI/ML API `gpt-4o-mini` | Regulatory standing: FDA, ONC, HIPAA, SOC 2 requirements |
-| **Risk** | AI/ML API `gpt-4o` | Adversarial review + veto authority. Triggers re-investigation loops |
-| **Synthesis** | Featherless `Qwen/Qwen2.5-72B-Instruct` | Final auditable trust report generation |
+| **Scout** | AI/ML API `gpt-4o` | Web search: customer references, breach history, lawsuits, news |
+| **Forensics** | AI/ML API `gpt-4o` | Document analysis: certifications, architecture flags, anomalies |
+| **Compliance** | AI/ML API `gpt-4o-mini` | Regulatory standing: FDA, ONC, HIPAA, SOC 2 |
+| **Gap** | AI/ML API `gpt-4o` | Evidence gap mapping across 9 categories with severity ratings |
+| **Risk** | AI/ML API `gpt-4o` | Adversarial review + final verdict (APPROVE / ESCALATE / REJECT) |
+| **Synthesis** | Featherless `Qwen/Qwen2.5-72B-Instruct` | Final auditable vendor trust report |
 
 **LLM Providers:**
-- [AI/ML API](https://aimlapi.com) — unified access to frontier models (GPT-4o, Claude, etc.)
-- [Featherless AI](https://featherless.ai) — serverless open-source model inference (Qwen 72B)
+- [AI/ML API](https://aimlapi.com) — unified access to frontier models
+- [Featherless AI](https://featherless.ai) — serverless open-source model inference
 - [Band](https://band.ai) — agent coordination layer, shared rooms, @mention routing
+
+**Implementation note:** Gap and Risk use LangGraph's `graph_factory` pattern for deterministic tool execution — the graph node always calls `band_send_message` directly rather than relying on LLM tool-choice. This guarantees the handoff chain never stalls.
 
 ---
 
-## Demo Scenarios
+## Example Output
 
-**Vendor A — Clean vendor:** Packet in → Forensics verifies certs → Scout finds solid references → Compliance passes → Risk approves → auditable report in ~90 seconds.
+```
+Scout:      SCOUT RESEARCH REPORT: Veradigm
+            Customer References: ... Legal Issues: $10.5M breach settlement ...
+               ↓
+Forensics:  FORENSICS REPORT: CERT_STATUS: UNVERIFIED — OVERALL: CRITICAL
+               ↓
+Compliance: COMPLIANCE REPORT: NON-COMPLIANT — Active Litigation: YES
+               ↓
+Gap:        GAP ANALYSIS: 3 critical gaps (SOC 2, FDA, ONC) — INSUFFICIENT
+               ↓
+Risk:       RISK VERDICT: ESCALATE — Evidence Quality Score: 4/10
+               ↓
+Synthesis:  VENDOR TRUST REPORT — Verdict: ESCALATE
+            [full audit trail delivered to @User]
+```
 
-**Vendor B — Problem vendor:** Forensics reads the SOC 2 and flags it as Type I (not Type II), expired, with scope excluding the clinical module being sold. Scout surfaces a 2024 breach the vendor never disclosed. Risk vetoes and posts specific re-investigation directives. Final verdict: **DO NOT PROCEED**, with a full audit trail.
+Full chain completes in ~30–90 seconds.
 
 ---
 
@@ -69,6 +89,8 @@ The key coordination mechanic: **Risk has veto authority**. If it finds a contra
 - A [Band](https://band.ai) account (use promo code `BANDHACK26` for free Pro)
 - [AI/ML API](https://aimlapi.com) key
 - [Featherless AI](https://featherless.ai) key (use promo code `BOA26`)
+- [Tavily](https://tavily.com) API key (Scout's web search)
+- [Exa](https://exa.ai) API key (Scout's semantic search)
 
 ### Installation
 
@@ -76,7 +98,6 @@ The key coordination mechanic: **Risk has veto authority**. If it finds a contra
 git clone https://github.com/juanduranmcgill/healthvet-agents
 cd healthvet-agents
 
-module load python/3.11.5   # if on HPC; skip otherwise
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -88,7 +109,7 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
-Edit `.env` with your actual keys.
+Edit `.env` with your actual keys (AI/ML, Featherless, Tavily, Exa, and Band credentials for each agent).
 
 **2. Copy and fill in Band agent credentials:**
 ```bash
@@ -97,28 +118,30 @@ cp agent_config.yaml.example agent_config.yaml
 
 To get Band agent credentials:
 1. Go to [app.band.ai/agents](https://app.band.ai/agents)
-2. Click **New Agent → External Agent** for each of the 5 agents (Scout, Forensics, Compliance, Risk, Synthesis)
-3. Copy the `agent_id` and `api_key` for each into `agent_config.yaml`
-4. Create a Band room and add all 5 agents as participants
+2. Click **New Agent → External Agent** for each of the 6 agents (Scout, Forensics, Compliance, Gap, Risk, Synthesis)
+3. Copy the `agent_id` and `api_key` into `agent_config.yaml`
+4. Create a Band room and add all 6 agents as participants
 
 ---
 
 ## Running the Agents
 
-Open 5 terminals and run each agent:
+Start all 6 agents in one command:
 
 ```bash
-source venv/bin/activate && python agents/scout.py
-source venv/bin/activate && python agents/forensics.py
-source venv/bin/activate && python agents/compliance.py
-source venv/bin/activate && python agents/risk.py
-source venv/bin/activate && python agents/synthesis.py
+./start.sh
+```
+
+Logs are written to `logs/<agent>.log`. Watch the handoff in real time:
+
+```bash
+tail -f logs/risk.log logs/synthesis.log
 ```
 
 Then trigger a vetting workflow in the Band room:
 
 ```
-@scout research the vendor "Veradigm" for our healthcare vendor vetting
+@<your-username>/scout Please run a full vendor assessment on Veradigm
 ```
 
 ---
@@ -128,11 +151,14 @@ Then trigger a vetting workflow in the Band room:
 ```
 healthvet-agents/
 ├── agents/
-│   ├── scout.py         # Web search agent (AI/ML API)
-│   ├── forensics.py     # Document vision agent (AI/ML API GPT-4o)
-│   ├── compliance.py    # Regulatory checker (AI/ML API)
-│   ├── risk.py          # Veto authority (AI/ML API)
+│   ├── llm.py           # Shared LLM factory (ChatOpenAINoStrict patch)
+│   ├── scout.py         # Web search agent (Tavily + Exa + HHS breach)
+│   ├── forensics.py     # Document analysis agent
+│   ├── compliance.py    # Regulatory checker
+│   ├── gap.py           # Evidence gap analyst (graph_factory)
+│   ├── risk.py          # Final decision authority (graph_factory)
 │   └── synthesis.py     # Report generator (Featherless Qwen 72B)
+├── start.sh             # Starts all 6 agents with per-agent log files
 ├── .env.example
 ├── agent_config.yaml.example
 ├── requirements.txt
@@ -141,21 +167,23 @@ healthvet-agents/
 
 ---
 
-## Make-or-Break Features (Roadmap)
+## Key Technical Details
 
-These are the features that would turn this from a prototype into a production system:
+**`ChatOpenAINoStrict`** — Band SDK tool schemas contain `anyOf` fields (optional parameters). The `langchain.agents.create_agent` function hardcodes `strict=True` in `bind_tools`, which causes 400 errors on AI/ML API. `ChatOpenAINoStrict` subclasses `ChatOpenAI` and drops the `strict` kwarg.
 
-- **Automated email outreach** — when agents detect missing information (expired cert, unverifiable reference), automatically draft and send a request to the vendor. Should only trigger in genuine edge cases (~once/month per vendor), not on every gap.
+**`graph_factory` for Gap and Risk** — These agents use a deterministic LangGraph graph instead of the ReAct tool-choice loop. The graph node calls `band_send_message` directly after LLM generation, guaranteeing the handoff always fires regardless of how the model decides to respond.
 
-- **Interactive graph view** — visual dashboard showing the vendor's trust profile: nodes for each evidence type, edges showing contradictions, pros/cons clearly labeled. Currently all output is text.
+**Sequential chain** — The pipeline is fully sequential (Scout → Forensics → Compliance → Gap → Risk → Synthesis). Each agent's `band_send_message` call includes the next agent's @mention, creating a reliable message-passing chain through Band rooms.
 
-- **Automated scoring system** — a structured pros/cons score that Risk derives from all agent findings. Key challenge: most vendor evaluation criteria are qualitative, not quantitative (unlike hardware benchmarks). Needs a defensible rubric.
+---
 
-- **Criteria setup wizard** — a 10-minute conversational onboarding where the system asks the hospital about their specific requirements (PHI volume, required certifications, integration environment) before running the vetting. This determines the scoring weights.
+## Roadmap
 
-- **Proactive gap notification** — agents should self-identify when they're stuck ("I cannot verify this reference — the health system doesn't have a public case study"). Risk routes this as a low-priority notification rather than blocking the workflow.
-
-- **Existing system research** — validate whether equivalent tools already exist in the market (health IT vendor intelligence platforms, procurement automation tools) and where this system's approach is differentiated.
+- **Interactive graph view** — visual dashboard showing the vendor's trust profile with nodes for each evidence type and edges showing contradictions
+- **Automated scoring system** — structured pros/cons score derived from all agent findings with a defensible, configurable rubric
+- **Criteria setup wizard** — 10-minute conversational onboarding where the system asks the hospital about their specific requirements before running the vetting
+- **Automated email outreach** — when agents detect missing information (expired cert, unverifiable reference), automatically draft and send a request to the vendor
+- **Proactive gap notification** — agents self-identify when stuck and route it as a low-priority notification rather than blocking the workflow
 
 ---
 
@@ -165,7 +193,8 @@ These are the features that would turn this from a prototype into a production s
 - [AI/ML API](https://aimlapi.com) — frontier model access
 - [Featherless AI](https://featherless.ai) — open-source model inference
 - [LangGraph](https://langchain-ai.github.io/langgraph/) — agent framework
-- [LangChain](https://python.langchain.com/) — LLM tooling
+- [Tavily](https://tavily.com) — web search
+- [Exa](https://exa.ai) — semantic search
 
 ---
 

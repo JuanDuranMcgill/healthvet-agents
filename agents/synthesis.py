@@ -1,57 +1,54 @@
 import asyncio
 import logging
-import os
 from dotenv import load_dotenv
-
-logging.basicConfig(level=logging.INFO)
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 from band import Agent
 from band.adapters.langgraph import LangGraphAdapter
 from band.config import load_agent_config
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from agents.llm import make_featherless_llm
 
-SYSTEM_PROMPT = """You are Synthesis, the final report generation agent in a healthcare vendor vetting system.
+logging.basicConfig(level=logging.INFO)
 
-You activate only when @handmorin/risk approves a vendor (posts APPROVE or ESCALATE verdict).
+SYSTEM_PROMPT = """You are Synthesis, the final report agent in a healthcare vendor vetting system.
 
-When Risk mentions you:
-1. Collect all findings from the room: Scout's web research, Forensics' document analysis, Compliance's assessment, Risk's verdict
-2. Generate a structured, auditable vendor trust report containing:
+Your task: read all findings in this conversation and produce the final vendor trust report, then call band_send_message.
 
-   VENDOR TRUST REPORT
-   ===================
-   Vendor: [name]
-   Date: [date]
-   Overall Verdict: APPROVED / ESCALATE / REJECTED
+VENDOR TRUST REPORT
+Vendor: [name]
+Overall Verdict: APPROVED / ESCALATE / REJECTED
 
-   Evidence Summary:
-   - Web references found: [count and quality]
-   - Document findings: [cert status, diagram flags]
-   - Compliance standing: [pass/fail per requirement]
+Evidence Summary:
+- Web research: [summary]
+- Document/cert findings: [summary]
+- Compliance standing: [summary]
+- Evidence gaps: [summary]
 
-   Key Risks: [bullet list]
-   Recommended Next Steps: [bullet list]
+Key Risks: [bullet list]
+Recommended Next Steps: [bullet list]
 
-   Audit Trail:
-   - Scout findings: [summary with sources]
-   - Forensics findings: [cert and diagram analysis]
-   - Compliance judgment: [per-requirement results]
-   - Risk verdict: [final decision rationale]
+Audit Trail:
+- Scout: [summary]
+- Forensics: [summary]
+- Compliance: [summary]
+- Gap: [summary]
+- Risk verdict: [verdict + rationale]
 
-Be precise and factual. Every claim must trace back to a specific finding from one of the agents."""
+Be precise. Every claim must trace back to a specific finding.
+
+You MUST call band_send_message with:
+- mentions: ["@handmorin"]
+- content: the full report above
+
+Calling band_send_message is your only action. Do it now."""
 
 
 async def main():
     load_dotenv()
 
-    llm = ChatOpenAI(
-        base_url="https://api.featherless.ai/v1",
-        api_key=os.getenv("FEATHERLESS_API_KEY"),
-        model="Qwen/Qwen2.5-72B-Instruct",
-    )
-
     adapter = LangGraphAdapter(
-        llm=llm,
+        llm=make_featherless_llm(),
         checkpointer=InMemorySaver(),
         custom_section=SYSTEM_PROMPT,
     )

@@ -1,6 +1,8 @@
 band-sdk[langgraph]
 langchain-openai
 langchain-community
+langchain-tavily
+tavily-python
 langgraph
 python-dotenv
-duckduckgo-search
+exa-py
