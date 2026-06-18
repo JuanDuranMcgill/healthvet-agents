@@ -66,6 +66,12 @@ Risk has veto authority. If it finds 2+ critical evidence gaps, it rejects the f
 - [Featherless AI](https://featherless.ai) — serverless open-source model inference (Qwen 72B)
 - [Band](https://band.ai) — multi-agent coordination layer
 
+**Why this provider stack?**
+
+[AI/ML API](https://aimlapi.com) gives us a single OpenAI-compatible endpoint to access multiple model tiers without managing separate integrations. HealthVet uses this to cost-optimize across agents: `gpt-4o-mini` for fast structured extraction (Compliance), `gpt-4o` for deep adversarial reasoning (Scout, Forensics, Gap, Risk). One API key, one SDK, two model tiers — exactly what a production multi-agent system needs. For teams building regulated-industry pipelines where model selection per task actually matters, AI/ML API makes that practical without the overhead of maintaining multiple provider clients.
+
+[Featherless AI](https://featherless.ai) powers Synthesis — the agent that writes the final vendor trust report delivered to the hospital. We chose an open-weight model (`Qwen2.5-72B-Instruct`) here deliberately: in a regulated industry, the compliance artifact needs to be reproducible and auditable end-to-end. Open-weight models mean a hospital's legal or IT team can inspect exactly what model produced their vendor report — not a black box. Featherless makes running a 72B model serverless and instant, with no GPU infrastructure to manage. For healthcare and other regulated domains where open-weight inference is a compliance requirement, not just a preference, Featherless fills a gap that hosted-only providers cannot.
+
 ---
 
 ## Setup
