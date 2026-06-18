@@ -1,0 +1,63 @@
+categories:
+  - id: patient_safety
+    label: "Patient Safety & Clinical Evidence"
+  - id: security_breach
+    label: "Security & Breach History"
+  - id: regulatory_compliance
+    label: "Regulatory Compliance (FDA, HIPAA, SOC 2)"
+  - id: deployment_speed
+    label: "Speed of Deployment & Time-to-Value"
+  - id: cost
+    label: "Cost & Total Cost of Ownership"
+  - id: integration_interop
+    label: "EHR Integration & Interoperability"
+  - id: vendor_stability
+    label: "Vendor Financial/Business Stability"
+  - id: support_service
+    label: "Support Quality & SLAs"
+  - id: data_transparency
+    label: "Data Residency & Subprocessor Transparency"
+
+sliders:
+  - id: cost_sensitivity
+    label: "How sensitive is the hospital to upfront costs vs long-term value?"
+    category: cost
+  - id: security_paranoia
+    label: "How strict are the hospital's security requirements?"
+    category: security_breach
+  - id: clinical_evidence_demand
+    label: "How much peer-reviewed clinical evidence is required?"
+    category: patient_safety
+  - id: fast_deployment_need
+    label: "How urgently does the hospital need this solution deployed?"
+    category: deployment_speed
+  - id: ehr_friction
+    label: "How difficult is IT/EHR integration typically at this hospital?"
+    category: integration_interop
+
+deal_breakers:
+  - factor: open_hipaa_breach
+    category: security_breach
+    rule: "unresolved OCR breach present"
+    question: "Is an unresolved OCR/HIPAA breach a deal-breaker?"
+  - factor: no_fda_clearance
+    category: regulatory_compliance
+    rule: "device requires FDA clearance but lacks it"
+    question: "Is lack of FDA clearance (when applicable) a deal-breaker?"
+  - factor: no_soc2
+    category: regulatory_compliance
+    rule: "no SOC 2 Type II report available"
+    question: "Is lack of SOC 2 Type II compliance a deal-breaker?"
+
+risk_appetite:
+  question: "What is the hospital's overall risk appetite?"
+  options:
+    - id: conservative
+      label: "Conservative (Approve: 80, Escalate: 60)"
+      thresholds: { approve: 80, escalate: 60 }
+    - id: balanced
+      label: "Balanced (Approve: 75, Escalate: 50)"
+      thresholds: { approve: 75, escalate: 50 }
+    - id: lenient
+      label: "Lenient (Approve: 65, Escalate: 40)"
+      thresholds: { approve: 65, escalate: 40 }

@@ -77,29 +77,72 @@ def graph_factory(band_tools):
         has_vetoed = thread_id in _vetoed_rooms
         logger.info(f"[Risk] room={thread_id[:8]}, messages={len(messages)}, has_vetoed={has_vetoed}")
 
-        prompt = SECOND_REVIEW_PROMPT if has_vetoed else VERDICT_PROMPT
+        # Gather all text from messages
+        full_text = "\n".join(m.content for m in messages if hasattr(m, "content"))
+        
+        import os
+        from questionnaire.profile import HospitalProfile
+        from questionnaire.extractor import extract_findings
+        from questionnaire.scorer import score_vendor
+        from questionnaire.gap import resolve_gaps
+        import json
+        
+        # We will use a default test profile if none is provided, or load one
+        # For this integration, we'll assume the slug is in env or default
+        profile_slug = os.environ.get("HOSPITAL_PROFILE", "mercy-rural-health")
+        profile = HospitalProfile(profile_slug).load()
+        if not profile.categories:
+            # Fallback mock for testing if no profile generated yet
+            profile.categories = {
+                "patient_safety": {"weight": 0.2},
+                "security_breach": {"weight": 0.2},
+                "regulatory_compliance": {"weight": 0.2},
+                "cost": {"weight": 0.2},
+                "deployment_speed": {"weight": 0.2}
+            }
+            
+        logger.info(f"[Risk] Extracting findings via LLM...")
+        extracted = extract_findings(full_text)
+        
+        if profile.settings.get("gap_resolution_mode", "ask") == "auto":
+            resolve_gaps(extracted.get("uncovered", []), profile)
+            
+        res = score_vendor(profile, extracted)
+        
+        fit = res["fit"]
+        verdict = res["verdict"]
+        breakdown_str = json.dumps(res["breakdown"], indent=2)
+        dbs = res["triggered_deal_breakers"]
+        
+        # Build the final content
+        content = f"**RISK VERDICT — QUANTITATIVE SCORECARD**\n"
+        content += f"Fit Score: {fit}/100\n"
+        content += f"Verdict: {verdict}\n\n"
+        if dbs:
+            content += f"Triggered Deal Breakers: {[db.get('factor') for db in dbs]}\n\n"
+        content += f"Category Breakdown:\n```json\n{breakdown_str}\n```\n"
 
-        verdict = await llm.ainvoke(
-            [SystemMessage(content=prompt)] + list(messages)
-        )
-        content = verdict.content
-        logger.info(f"[Risk] verdict: {content[:300]}")
-
+        # VETO Logic (still applicable if not vetoed yet and verdict is REJECT)
         is_veto = (
             not has_vetoed
-            and "FINAL VERDICT: REJECT" in content.upper()
-            and "VETO DIRECTIVES:" in content
+            and verdict == "REJECT"
+            and any(b.get("score", 10) < 5 for b in res["breakdown"]) # simple heuristic for gaps
         )
 
         if is_veto:
             _vetoed_rooms.add(thread_id)
-            mentions = ["@handmorin/scout"]
+            mentions = ["@leejongmin1092/scout"]
+            content += "\n\nVETO DIRECTIVES:\n- Please find more concrete evidence on categories with scores < 5."
             send_content = f"🚨 VETO #1 — Re-investigation Required\n\n{content}\n\nScout, please re-run your research addressing each VETO DIRECTIVE above."
             logger.info(f"[Risk] VETO issued for room {thread_id[:8]}")
         else:
-            mentions = ["@handmorin/synthesis"]
+            mentions = ["@leejongmin1092/synthesis"]
             send_content = content
             logger.info(f"[Risk] final decision for room {thread_id[:8]}")
+
+        # Update the state with our verdict message
+        from langchain_core.messages import AIMessage
+        verdict_msg = AIMessage(content=content)
 
         result = await band_send.ainvoke({
             "content": send_content,
@@ -107,7 +150,7 @@ def graph_factory(band_tools):
         })
         logger.info(f"[Risk] band_send result: {result}")
 
-        return {"messages": [verdict]}
+        return {"messages": [verdict_msg]}
 
     builder = StateGraph(RiskState)
     builder.add_node("risk", risk_node)

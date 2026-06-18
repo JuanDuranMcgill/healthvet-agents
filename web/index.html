@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HealthVet — AI Vendor Intelligence</title>
+    <meta name="description" content="Multi-agent AI-powered healthcare vendor vetting platform">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <div class="sidebar-brand">
+                    <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <span class="brand-name">HealthVet</span>
+                </div>
+                <nav class="sidebar-nav">
+                    <a class="nav-link active" data-tab="dashboard">
+                        <i class="fa-solid fa-layer-group"></i><span>Dashboard</span>
+                    </a>
+                    <a class="nav-link" data-tab="wizard">
+                        <i class="fa-solid fa-sliders"></i><span>Config</span>
+                    </a>
+                    <a class="nav-link" data-tab="studio">
+                        <i class="fa-solid fa-bolt"></i><span>Assess</span>
+                    </a>
+                    <a class="nav-link disabled" data-tab="analysis" id="nav-analysis">
+                        <i class="fa-solid fa-file-contract"></i><span>Report</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="sidebar-bottom">
+                <div class="sidebar-user">
+                    <div class="user-avatar">SJ</div>
+                    <div class="user-meta">
+                        <span class="user-name" id="sidebar-hospital-name">St. Jude Medical</span>
+                        <span class="user-role">Administrator</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="mobile-menu-btn" id="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
+                    <div>
+                        <h1 class="topbar-title" id="page-title">Dashboard</h1>
+                        <p class="topbar-subtitle" id="page-subtitle">Manage and review vendor risk assessments.</p>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <button class="icon-btn" id="theme-toggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+                    <button class="icon-btn" id="cmd-k-hint" title="Command palette (Ctrl+K)"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="content-scroll">
+
+                <!-- TAB: Dashboard -->
+                <section id="tab-dashboard" class="tab-pane active">
+                    <div class="kpi-row">
+                        <div class="kpi-card"><div class="kpi-label">Total Assessments</div><div class="kpi-value" id="kpi-total">0</div></div>
+                        <div class="kpi-card"><div class="kpi-label">Pending Reviews</div><div class="kpi-value kpi-amber" id="kpi-pending">0</div></div>
+                        <div class="kpi-card"><div class="kpi-label">Rejected Vendors</div><div class="kpi-value kpi-red" id="kpi-rejected">0</div></div>
+                        <div class="kpi-card"><div class="kpi-label">Avg Vendor Score</div><div class="kpi-value kpi-green" id="kpi-avg-score">--</div></div>
+                    </div>
+                    
+                    <div class="panel">
+                        <h3><i class="fa-solid fa-chart-line"></i> Vendor Quality Trend</h3>
+                        <div class="chart-wrap" style="height:220px; width:100%; margin-top:12px;">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap: wrap; gap: 12px;">
+                            <h2 style="margin-bottom:0;">Vendor Directory</h2>
+                            <div style="display:flex; align-items:center; gap: 8px; flex-wrap: wrap;">
+                                <div style="position:relative;">
+                                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                                    <input type="text" id="dashboard-search" class="form-input" style="width: 240px; padding: 8px 12px 8px 32px;" placeholder="Search vendors...">
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="openCompareModal()"><i class="fa-solid fa-code-compare"></i> Compare</button>
+                                <button class="btn btn-outline btn-sm" onclick="window.location.href='/api/export_csv'"><i class="fa-solid fa-file-csv"></i> Export</button>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead><tr>
+                                    <th>Vendor</th><th>Category</th><th>Score</th><th>Compliance</th><th>Status</th><th></th>
+                                </tr></thead>
+                                <tbody id="vendor-directory-rows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: Config Wizard -->
+                <section id="tab-wizard" class="tab-pane">
+                    <div class="panel wizard-panel">
+                        <div class="wizard-header">
+                            <h2>Assessment Configuration</h2>
+                            <p>Define baseline requirements and scoring weights for your organization.</p>
+                        </div>
+                        <div class="form-section">
+                            <h3>Organization Profile</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="wizard-org-name">Organization Name</label>
+                                    <input type="text" id="wizard-org-name" class="form-input" value="St. Jude Medical Center">
+                                </div>
+                                <div class="form-group">
+                                    <label for="wizard-org-size">Scale</label>
+                                    <select class="form-input" id="wizard-org-size">
+                                        <option value="small">Local Clinic</option>
+                                        <option value="large" selected>Regional / Large System</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="divider">
+                        <div class="form-section">
+                            <h3>Scoring Weights</h3>
+                            <p class="form-hint">Adjust the importance (1–5) of each category for the final fit score.</p>
+                            <div class="weight-grid">
+                                <div class="weight-item"><div class="weight-row"><label>Security & Privacy</label><span class="weight-val" id="val-security">5</span></div><input type="range" min="1" max="5" value="5" class="slider" id="slider-security"></div>
+                                <div class="weight-item"><div class="weight-row"><label>Clinical Validation</label><span class="weight-val" id="val-clinical">5</span></div><input type="range" min="1" max="5" value="5" class="slider" id="slider-clinical"></div>
+                                <div class="weight-item"><div class="weight-row"><label>Regulatory Standing</label><span class="weight-val" id="val-compliance">5</span></div><input type="range" min="1" max="5" value="5" class="slider" id="slider-compliance"></div>
+                                <div class="weight-item"><div class="weight-row"><label>Deployment Speed</label><span class="weight-val" id="val-speed">3</span></div><input type="range" min="1" max="5" value="3" class="slider" id="slider-speed"></div>
+                                <div class="weight-item"><div class="weight-row"><label>Cost & Liability</label><span class="weight-val" id="val-cost">2</span></div><input type="range" min="1" max="5" value="2" class="slider" id="slider-cost"></div>
+                            </div>
+                        </div>
+                        <hr class="divider">
+                        <div class="form-section">
+                            <h3>Gatekeeper Requirements</h3>
+                            <p class="form-hint">Vendors missing these documents will incur significant penalties or automatic rejection.</p>
+                            <div class="check-list">
+                                <label class="check-item"><input type="checkbox" id="chk-soc2" checked><span class="check-box"></span><div><strong>SOC 2 Type II</strong><span>Current audit covering the specific product scope.</span></div></label>
+                                <label class="check-item"><input type="checkbox" id="chk-fda" checked><span class="check-box"></span><div><strong>FDA 510(k) Clearance</strong><span>Required if product involves clinical diagnostics.</span></div></label>
+                                <label class="check-item"><input type="checkbox" id="chk-baa" checked><span class="check-box"></span><div><strong>HIPAA BAA</strong><span>Willingness to sign a standard Business Associate Agreement.</span></div></label>
+                                <label class="check-item"><input type="checkbox" id="chk-onc"><span class="check-box"></span><div><strong>ONC Certification</strong><span>Required for primary EHR systems.</span></div></label>
+                            </div>
+                        </div>
+                        <div class="wizard-footer">
+                            <button class="btn btn-primary" id="btn-save-config">Save Configuration</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: Assess (Vetting Studio) -->
+                <section id="tab-studio" class="tab-pane">
+                    <div class="studio-grid">
+                        <div class="panel studio-sidebar-panel">
+                            <h2>New Assessment</h2>
+                            <div class="form-group">
+                                <label for="studio-vendor-select">Vendor Name</label>
+                                <input type="text" id="studio-vendor-select" class="form-input" placeholder="e.g. Acme Clinical AI, Veradigm, Epic..." />
+                            </div>
+                            <div class="form-group">
+                                <label>Supporting Documents</label>
+                                <div class="upload-zone"><i class="fa-solid fa-cloud-arrow-up"></i><span>Drop files here or click to browse</span></div>
+                                <div class="file-list" id="loaded-files-container"></div>
+                            </div>
+                            <button class="btn btn-primary btn-full" id="btn-start-vetting" style="margin-top: auto;">Run Assessment</button>
+                        </div>
+
+                        <!-- Chat / Audit Trail -->
+                        <div class="panel chat-panel">
+                            <div class="chat-header">
+                                <div class="chat-header-left">
+                                    <h2>Band Room — Agent Chat</h2>
+                                    <span class="badge" id="room-status-badge">Ready</span>
+                                </div>
+                            </div>
+                            <div class="agent-bar">
+                                <div class="agent-chip" id="node-scout"><span class="agent-dot" style="background:#3b82f6"></span>Scout</div>
+                                <div class="agent-chip" id="node-forensics"><span class="agent-dot" style="background:#8b5cf6"></span>Forensics</div>
+                                <div class="agent-chip" id="node-compliance"><span class="agent-dot" style="background:#10b981"></span>Compliance</div>
+                                <div class="agent-chip" id="node-gap"><span class="agent-dot" style="background:#06b6d4"></span>Gap</div>
+                                <div class="agent-chip" id="node-risk"><span class="agent-dot" style="background:#ef4444"></span>Risk</div>
+                                <div class="agent-chip" id="node-synthesis"><span class="agent-dot" style="background:#f59e0b"></span>Synthesis</div>
+                            </div>
+                            <div class="chat-feed" id="chat-console-box">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-comments"></i>
+                                    <p>Select a vendor and run the assessment to start the multi-agent conversation.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: Report / Trust Analysis -->
+                <section id="tab-analysis" class="tab-pane">
+                    <!-- Score Header -->
+                    <div class="panel report-hero">
+                        <div class="report-hero-left">
+                            <h2 id="analysis-vendor-name">Vendor Name</h2>
+                            <span class="badge" id="score-verdict">Status</span>
+                            <span class="badge" id="phi-risk-badge" style="display:none;">PHI Risk: ?</span>
+                            <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+                        </div>
+                        <div class="score-ring-wrap">
+                            <svg class="progress-ring" width="96" height="96">
+                                <circle class="ring-bg" stroke-width="7" fill="transparent" r="40" cx="48" cy="48"/>
+                                <circle class="ring-fg" stroke-width="7" fill="transparent" r="40" cx="48" cy="48"/>
+                            </svg>
+                            <div class="ring-label"><span class="ring-number" id="score-number">0</span><span class="ring-sub">Fit</span></div>
+                        </div>
+                    </div>
+
+                    <div class="report-grid">
+                        <!-- Left Column -->
+                        <div class="report-col">
+                            <div class="panel">
+                                <h3>Assessment Footprint</h3>
+                                <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+                            </div>
+                            <div class="panel">
+                                <h3>Dependency & Evidence Graph</h3>
+                                <div class="graph-wrap">
+                                    <svg id="interactive-svg-graph" width="100%" height="280"></svg>
+                                    <div class="node-popover" id="node-detail-panel" style="display:none;">
+                                        <h4 id="node-detail-title">Node</h4>
+                                        <p id="node-detail-desc">Details</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right Column -->
+                        <div class="report-col">
+                            <div class="pros-cons-grid">
+                                <div class="pros-box panel">
+                                    <h3><i class="fa-solid fa-thumbs-up" style="color:var(--green)"></i> Top Pros</h3>
+                                    <ul id="list-pros"></ul>
+                                </div>
+                                <div class="cons-box panel">
+                                    <h3><i class="fa-solid fa-triangle-exclamation" style="color:var(--amber)"></i> Top Cons</h3>
+                                    <ul id="list-cons"></ul>
+                                </div>
+                            </div>
+
+                            <div id="clinical-insights-panel" class="panel glass-panel" style="display:none; border-left: 4px solid var(--accent);">
+                                <h3 style="color:var(--accent); margin-bottom:8px;"><i class="fa-solid fa-stethoscope"></i> CMO Clinical Insights</h3>
+                                <p id="cmo-tldr" style="font-weight:500; margin-bottom:12px; font-size:14px;"></p>
+                                <h4 style="margin-bottom:8px; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">Recommended Alternatives</h4>
+                                <ul id="clinical-alternatives" style="padding-left:20px; margin-top:0;"></ul>
+                            </div>
+                            
+                            <div class="panel glass-panel">
+                                <h3><i class="fa-solid fa-comment-medical"></i> Ask AI About Vendor</h3>
+                                <div id="chat-history" style="height:200px; overflow-y:auto; background:var(--bg-inset); padding:12px; border-radius:var(--r-md); margin-bottom:12px; font-size:13px; display:flex; flex-direction:column; gap:8px;">
+                                    <div style="color:var(--text-muted); text-align:center; margin-top:auto; margin-bottom:auto;">Ask a question about compliance, features, or risks.</div>
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="text" id="chat-input" class="form-input" placeholder="Type your question..." style="flex:1;" onkeypress="if(event.key==='Enter') sendChat()">
+                                    <button class="btn btn-primary" onclick="sendChat()"><i class="fa-solid fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+
+
+                            <div class="panel" id="outreach-card">
+                                <h3>Action Items</h3>
+                                <div id="gap-notifications" class="gap-stack"></div>
+                                <div class="email-draft" id="email-editor-section" style="display:none;">
+                                    <h4>Draft Communication</h4>
+                                    <input type="text" id="outreach-email-to" class="form-input" placeholder="To:">
+                                    <input type="text" id="outreach-email-subject" class="form-input" placeholder="Subject:">
+                                    <textarea id="outreach-email-body" class="form-input" rows="5" placeholder="Message body..."></textarea>
+                                    <button class="btn btn-secondary" onclick="sendOutreach()">Send Message</button>
+                                </div>
+                            </div>
+                            <!-- Full Report -->
+                            <div class="panel">
+                                <h3>Full Audit Report</h3>
+                                <div class="report-body" id="report-md-content">
+                                    <p style="color:var(--text-muted)">Run an assessment to generate the full report.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div><!-- /content-scroll -->
+        </main>
+    </div><!-- /app-shell -->
+
+    <!-- Command Palette -->
+    <div id="cmd-palette" class="palette-overlay">
+        <div id="cmd-palette-content">
+            <div id="cmd-search-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="cmd-input" placeholder="Search commands, actions, or vendors..." autocomplete="off">
+            </div>
+            <div id="cmd-results"></div>
+        </div>
+    </div>
+    
+    <!-- Compare Modal -->
+    <div id="compare-modal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+        <div class="panel glass-panel" style="width:700px; max-width:90%; position:relative; max-height:90vh; overflow-y:auto;">
+            <button onclick="closeCompareModal()" style="position:absolute; right:20px; top:20px; background:none; border:none; color:var(--text-color); cursor:pointer; font-size:20px;"><i class="fa-solid fa-xmark"></i></button>
+            <h2 style="margin-bottom:20px;"><i class="fa-solid fa-code-compare"></i> Head-to-Head Comparison</h2>
+            <div style="display:flex; gap:16px; margin-bottom:20px;">
+                <div style="flex:1">
+                    <label style="display:block; margin-bottom:8px; font-weight:500;">Vendor A</label>
+                    <select id="compare-vendor-a" class="form-control" style="width:100%;"></select>
+                </div>
+                <div style="flex:1">
+                    <label style="display:block; margin-bottom:8px; font-weight:500;">Vendor B</label>
+                    <select id="compare-vendor-b" class="form-control" style="width:100%;"></select>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="compare-btn" style="width:100%; margin-bottom:20px;" onclick="runComparison()"><i class="fa-solid fa-bolt"></i> Generate Comparison</button>
+            
+            <div id="compare-results" style="display:none;">
+                <div class="panel" style="background:var(--bg-inset); text-align:center;">
+                    <h3 style="color:var(--accent);">Winner: <span id="compare-winner"></span></h3>
+                    <p id="compare-justification" style="font-size:14px; margin-top:8px;"></p>
+                </div>
+                <div class="chart-wrap" style="height:300px; margin-top:20px;">
+                    <canvas id="compareRadarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="app-toast">Notification</div>
+
+    <script src="app.js"></script>
+</body>
+</html>

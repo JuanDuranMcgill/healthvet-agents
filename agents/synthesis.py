@@ -25,6 +25,11 @@ Evidence Summary:
 - Compliance standing: [summary]
 - Evidence gaps: [summary]
 
+Quantitative Scorecard (Extract from Risk Agent):
+- Fit Score: [XX/100]
+- Triggered Deal Breakers: [List any deal breakers, or 'None']
+- Assumed Factors: [List any assumed factors, or 'None']
+
 Key Risks: [bullet list]
 Recommended Next Steps: [bullet list]
 
@@ -38,7 +43,7 @@ Audit Trail:
 Be precise. Every claim must trace back to a specific finding.
 
 You MUST call band_send_message with:
-- mentions: ["@handmorin"]
+- mentions: ["@leejongmin1092/ui"]
 - content: the full report above
 
 Calling band_send_message is your only action. Do it now."""

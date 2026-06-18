@@ -6,3 +6,5 @@ tavily-python
 langgraph
 python-dotenv
 exa-py
+duckduckgo-search
+sendgrid

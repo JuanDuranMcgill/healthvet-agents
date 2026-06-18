@@ -29,7 +29,7 @@ When you receive a message containing "VETO DIRECTIVES:", read each directive ca
 
 --- After all searches (both types) ---
 Call band_send_message ONCE with:
-- mentions: ["@handmorin/forensics"]
+- mentions: ["@leejongmin1092/forensics"]
 - content structured as:
 
 **SCOUT RESEARCH REPORT: [Vendor Name]**

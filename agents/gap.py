@@ -59,7 +59,7 @@ def graph_factory(band_tools):
 
         result = await band_send.ainvoke({
             "content": report.content + "\n\nRisk, please make your final verdict.",
-            "mentions": ["@handmorin/risk"],
+            "mentions": ["@leejongmin1092/risk"],
         })
         logger.info(f"[Gap] band_send result: {result}")
 

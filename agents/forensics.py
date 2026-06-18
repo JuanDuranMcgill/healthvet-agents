@@ -24,7 +24,7 @@ Write this report based on what Scout found:
 - OVERALL: CLEAN / ISSUES_FOUND / CRITICAL / INSUFFICIENT_EVIDENCE
 
 You MUST call band_send_message with:
-- mentions: ["@handmorin/compliance"]
+- mentions: ["@leejongmin1092/compliance"]
 - content: the report above + "Compliance, please assess the regulatory standing."
 
 Calling band_send_message is your only action. Call it exactly once. Do it now."""

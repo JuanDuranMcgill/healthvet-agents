@@ -51,7 +51,7 @@ def graph_factory(band_tools):
 
         result = await band_send.ainvoke({
             "content": report.content + "\n\nGap, please run your evidence gap analysis.",
-            "mentions": ["@handmorin/gap"],
+            "mentions": ["@leejongmin1092/gap"],
         })
         logger.info(f"[Compliance] band_send result: {result}")
 

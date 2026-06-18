@@ -1,0 +1,32 @@
+slug: test-hospital
+version: 2
+hospital: Test Hospital
+updated: '2026-06-18'
+settings:
+  gap_resolution_mode: auto
+categories:
+  patient_safety:
+    weight: 0.2727
+    rank: 1
+  cost:
+    weight: 0.1818
+    rank: 2
+  security_breach:
+    weight: 0.4545
+    rank: 3
+  data_residency:
+    weight: 0.0909
+    rank: 4
+deal_breakers:
+- factor: open_hipaa_breach
+  category: security_breach
+  rule: unresolved OCR breach
+thresholds:
+  approve: 75
+  escalate: 50
+rationale: ''
+assumptions:
+- action: updated_category
+  category: data_residency
+  source: gap_auto
+  timestamp: '2026-06-18T12:30:46.199615'
