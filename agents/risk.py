@@ -12,6 +12,7 @@ from band.config import load_agent_config
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from agents.llm import make_llm
+from questionnaire import integration as fit_scoring
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("risk")
@@ -50,8 +51,21 @@ def graph_factory(band_tools):
         )
         logger.info(f"[Risk] verdict generated: {verdict.content[:200]}")
 
+        # Quantitative fit score vs the active hospital profile (if configured).
+        content = verdict.content
+        try:
+            findings = "\n\n".join(
+                str(m.content) for m in messages if getattr(m, "content", None)
+            )
+            scorecard = await fit_scoring.score_vendor(findings, llm)
+            if scorecard:
+                content = f"{content}\n\n{scorecard}"
+                logger.info("[Risk] appended fit scorecard")
+        except Exception as e:  # scoring must never break the handoff chain
+            logger.warning(f"[Risk] fit scoring skipped: {e}")
+
         result = await band_send.ainvoke({
-            "content": verdict.content,
+            "content": content,
             "mentions": ["@handmorin/synthesis"],
         })
         logger.info(f"[Risk] band_send_message result: {result}")

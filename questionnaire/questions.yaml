@@ -1,0 +1,80 @@
+# HealthVet onboarding questionnaire — bounded, ~10 minutes.
+# Answers map DETERMINISTICALLY to a hospital profile (see mapping.py).
+# Editable: change wording/options here freely; mapping.py reads the `id`s.
+
+# How rank position -> base points. Position 1 (most important) gets the most.
+# 9 ranked categories => points 9..1, later normalized to sum 1.0.
+rank_points: [9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+# Slider value (1-5) -> multiplier applied to that category's base weight.
+slider_multipliers: {1: 0.33, 2: 0.66, 3: 1.0, 4: 1.33, 5: 1.66}
+
+# Risk appetite choice -> verdict thresholds {approve, escalate}. Below escalate = reject.
+risk_appetite:
+  conservative: {approve: 80, escalate: 60}
+  balanced:     {approve: 75, escalate: 50}
+  lenient:      {approve: 65, escalate: 40}
+
+questions:
+  # --- Q1: rank all nine categories (forced ordering) ---
+  - id: rank_categories
+    type: rank
+    prompt: >-
+      Rank these nine factors from MOST to LEAST important for your hospital
+      when choosing a vendor. (1 = most important)
+    categories: [patient_safety, security_breach, regulatory_compliance,
+                 deployment_speed, cost, integration_interop, vendor_stability,
+                 support_service, data_transparency]
+
+  # --- Q2-Q6: five sliders fine-tuning the top concerns ---
+  - id: slider_patient_safety
+    type: slider
+    category: patient_safety
+    prompt: "How critical is documented clinical-outcome / patient-safety evidence? (1 low - 5 critical)"
+  - id: slider_security_breach
+    type: slider
+    category: security_breach
+    prompt: "How much does a clean security & breach history matter? (1 low - 5 critical)"
+  - id: slider_deployment_speed
+    type: slider
+    category: deployment_speed
+    prompt: "How important is fast deployment / quick time-to-value? (1 low - 5 critical)"
+  - id: slider_cost
+    type: slider
+    category: cost
+    prompt: "How budget-sensitive is this purchase? (1 not sensitive - 5 extremely)"
+  - id: slider_integration_interop
+    type: slider
+    category: integration_interop
+    prompt: "How important is tight EHR integration / interoperability? (1 low - 5 critical)"
+
+  # --- Q7: deal-breaker checklist ---
+  - id: deal_breakers
+    type: multi_check
+    prompt: "Which of these are absolute deal-breakers? (check all that apply)"
+    options:
+      - id: open_hipaa_breach
+        label: "Any unresolved HIPAA / OCR data breach"
+        category: security_breach
+        rule: "unresolved OCR breach present"
+      - id: no_fda_clearance
+        label: "No FDA clearance when device classification applies"
+        category: regulatory_compliance
+        rule: "FDA clearance NOT_FOUND when applicable"
+      - id: no_soc2
+        label: "No SOC 2 Type II report"
+        category: regulatory_compliance
+        rule: "SOC 2 not verified"
+      - id: active_litigation
+        label: "Active material litigation against the vendor"
+        category: vendor_stability
+        rule: "active litigation present"
+
+  # --- Q8: risk appetite -> thresholds ---
+  - id: risk_appetite
+    type: single_choice
+    prompt: "How conservative is your procurement risk appetite?"
+    options:
+      - {id: conservative, label: "Conservative — only approve very clean vendors"}
+      - {id: balanced,     label: "Balanced — standard diligence"}
+      - {id: lenient,      label: "Lenient — willing to escalate-and-mitigate"}

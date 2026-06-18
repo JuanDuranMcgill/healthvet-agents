@@ -19,6 +19,12 @@ VENDOR TRUST REPORT
 Vendor: [name]
 Overall Verdict: APPROVED / ESCALATE / REJECTED
 
+Fit Score: [If a "FIT SCORE" block appears in the conversation, reproduce the
+vendor's fit score (0-100) and the per-category breakdown here. If that block
+lists "Uncovered factors" or any "ASSUMED" weights, you MUST surface every one
+of them prominently under "Assumptions Requiring Confirmation" below — never
+omit or soften them. If no FIT SCORE block is present, write "not scored".]
+
 Evidence Summary:
 - Web research: [summary]
 - Document/cert findings: [summary]
@@ -26,6 +32,7 @@ Evidence Summary:
 - Evidence gaps: [summary]
 
 Key Risks: [bullet list]
+Assumptions Requiring Confirmation: [any ASSUMED weights / uncovered factors, or "none"]
 Recommended Next Steps: [bullet list]
 
 Audit Trail:

@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 venv/
 logs/
+questionnaire/profiles/*.yaml
+.pytest_cache/
