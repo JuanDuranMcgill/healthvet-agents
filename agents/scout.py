@@ -43,7 +43,7 @@ Call band_send_message ONCE with:
 
 Forensics, please begin your document and evidence analysis.
 
-Do not call band_send_message more than once."""
+Do not call band_send_message more than once. Do not send any acknowledgment or text response before completing all searches. Run searches first, then call band_send_message once."""
 
 
 @tool

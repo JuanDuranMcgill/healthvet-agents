@@ -1,6 +1,11 @@
 # Band agent credentials — get these from app.band.ai/agents
-# Copy this file to agent_config.yaml and fill in your values
-# DO NOT commit agent_config.yaml (it is in .gitignore)
+# Copy this file to agent_config.yaml and fill in your values.
+# DO NOT commit agent_config.yaml (it is in .gitignore).
+#
+# For each agent below:
+#   1. Go to app.band.ai/agents → New Agent → External Agent
+#   2. Name it exactly (Scout, Forensics, Compliance, Gap, Risk, Synthesis)
+#   3. Copy the agent_id (UUID) and api_key here
 
 scout:
   agent_id: "your-scout-agent-uuid"
@@ -13,6 +18,10 @@ forensics:
 compliance:
   agent_id: "your-compliance-agent-uuid"
   api_key: "your-compliance-band-api-key"
+
+gap:
+  agent_id: "your-gap-agent-uuid"
+  api_key: "your-gap-band-api-key"
 
 risk:
   agent_id: "your-risk-agent-uuid"
