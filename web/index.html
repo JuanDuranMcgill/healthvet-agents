@@ -42,9 +42,13 @@
                     <div class="user-avatar">SJ</div>
                     <div class="user-meta">
                         <span class="user-name" id="sidebar-hospital-name">St. Jude Medical</span>
-                        <span class="user-role">Administrator</span>
+                        <span class="user-role" id="hv-user-name">Administrator</span>
                     </div>
                 </div>
+                <a href="login.html" onclick="return hvLogout()" id="hv-logout"
+                   style="display:flex;align-items:center;gap:8px;color:var(--muted,#92a0bd);font-size:13px;text-decoration:none;margin-top:10px;padding:6px 2px;">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>Sign out</span>
+                </a>
             </div>
         </aside>
 
@@ -154,6 +158,9 @@
                         </div>
                         <div class="wizard-footer">
                             <button class="btn btn-primary" id="btn-save-config">Save Configuration</button>
+                            <a class="btn btn-primary" href="questionnaire.html" style="margin-left:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+                                <i class="fa-solid fa-clipboard-list"></i> 10-Minute Quantification Questionnaire
+                            </a>
                         </div>
                     </div>
                 </section>
@@ -339,6 +346,14 @@
     <!-- Toast -->
     <div class="toast" id="app-toast">Notification</div>
 
+    <script src="env.js"></script>
+    <script src="api-base.js"></script>
+    <script>
+        function hvLogout() {
+            location.href = (window.API_BASE || "") + "/auth/logout";
+            return false;
+        }
+    </script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -2,11 +2,24 @@ import json
 import os
 import time
 import uuid
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+import http.cookies
+from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-PORT = 8000
+from dotenv import load_dotenv
+load_dotenv()
+
+import auth_google
+import web_integration
+
+PORT = int(os.environ.get("PORT", "8000"))
 WEB_DIR = os.path.join(os.path.dirname(__file__), 'web')
+
+# Paths that never require authentication.
+PUBLIC_PREFIXES = ('/auth/', '/login.html', '/api/me')
+PUBLIC_EXACT = {'/favicon.ico'}
+# Static asset extensions are public so the login page can load CSS/JS.
+PUBLIC_EXTS = ('.css', '.js', '.png', '.jpg', '.svg', '.ico', '.woff', '.woff2', '.ttf')
 
 # Active vetting tasks
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -57,6 +70,67 @@ def save_db(data):
 active_vettings = load_db()
 
 class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
+    # ---- CORS (frontend on Vercel, backend here) ----
+    def end_headers(self):
+        origin = self.headers.get('Origin')
+        if origin:
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+            self.send_header('Vary', 'Origin')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+
+    # ---- auth helpers ----
+    def _session(self):
+        cookie = http.cookies.SimpleCookie(self.headers.get('Cookie', ''))
+        sid = cookie['hv_session'].value if 'hv_session' in cookie else None
+        return auth_google.get_session(sid), sid
+
+    def _send_json(self, obj, status=200, extra_headers=None):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(json.dumps(obj).encode('utf-8'))
+
+    def _redirect(self, location, extra_headers=None):
+        self.send_response(302)
+        self.send_header('Location', location)
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+
+    def _is_public(self, path):
+        if not auth_google.auth_enabled():
+            return True
+        if path in PUBLIC_EXACT or path == '/login.html':
+            return True
+        if any(path.startswith(p) for p in PUBLIC_PREFIXES):
+            return True
+        if path.endswith(PUBLIC_EXTS):
+            return True
+        return False
+
+    def _require_auth(self, path):
+        """Return True if the request is allowed to proceed."""
+        if self._is_public(path):
+            return True
+        session, _ = self._session()
+        if session:
+            return True
+        # API calls get 401; page loads get redirected to the login page.
+        if path.startswith('/api/'):
+            self._send_json({"error": "unauthorized"}, status=401)
+        else:
+            self._redirect('/login.html')
+        return False
+
     def translate_path(self, path):
         # Serve from the 'web' folder for root-level files
         parsed = urlparse(path)
@@ -74,6 +148,65 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed_url = urlparse(self.path)
         path = parsed_url.path
+
+        if not self._require_auth(path):
+            return
+
+        # ---- auth routes ----
+        if path == '/api/me':
+            session, _ = self._session()
+            self._send_json({
+                "auth_enabled": auth_google.auth_enabled(),
+                "authenticated": bool(session) or not auth_google.auth_enabled(),
+                "email": session["email"] if session else None,
+                "name": session["name"] if session else None,
+                "picture": session["picture"] if session else None,
+            })
+            return
+
+        elif path == '/auth/google':
+            if not auth_google.auth_enabled():
+                self._redirect('/')
+                return
+            self._redirect(auth_google.build_auth_url())
+            return
+
+        elif path == '/auth/google/callback':
+            query = parse_qs(parsed_url.query)
+            code = query.get('code', [None])[0]
+            state = query.get('state', [None])[0]
+            if not code or not state:
+                self._send_json({"error": "missing code/state"}, status=400)
+                return
+            sid, err = auth_google.exchange_code(code, state)
+            if err:
+                self._send_json({"error": err}, status=403)
+                return
+            cookie = (f"hv_session={sid}; Path=/; HttpOnly; SameSite=None; "
+                      f"Secure; Max-Age={auth_google.SESSION_TTL}")
+            # After login, return the user to the frontend (Vercel) if configured.
+            dest = os.environ.get('FRONTEND_URL', '/')
+            self._redirect(dest, extra_headers={'Set-Cookie': cookie})
+            return
+
+        elif path == '/auth/logout':
+            _, sid = self._session()
+            auth_google.destroy_session(sid)
+            self._redirect('/login.html',
+                           extra_headers={'Set-Cookie': 'hv_session=; Path=/; Max-Age=0'})
+            return
+
+        # ---- questionnaire routes ----
+        elif path == '/api/questionnaire':
+            self._send_json(web_integration.questionnaire_json())
+            return
+
+        elif path == '/api/profile':
+            query = parse_qs(parsed_url.query)
+            slug = query.get('slug', [hospital_config.get('active_profile', '')])[0]
+            prof = web_integration.load_profile(slug) if slug else None
+            self._send_json(web_integration.profile_to_dict(prof) if prof else {"profile": None})
+            return
 
         if path == '/api/history':
             self.send_response(200)
@@ -187,6 +320,19 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                                     "security": 75, "clinical": 75, "compliance": 75, "speed": 75, "cost": 75, "overall": 75
                                 }
                                 
+                            # --- Quantification pipeline: score against the active hospital profile ---
+                            active_slug = hospital_config.get('active_profile')
+                            if active_slug:
+                                try:
+                                    prof = web_integration.load_profile(active_slug)
+                                    if prof:
+                                        fit = web_integration.score_report(prof, report, vendor)
+                                        active_vettings[task_id]["fit"] = fit
+                                        # the quantified verdict is authoritative when a profile exists
+                                        verdict = fit.get("verdict", verdict)
+                                except Exception as e:
+                                    print("Quantification scoring error:", e)
+
                             active_vettings[task_id]["status"] = "completed"
                             active_vettings[task_id]["verdict"] = verdict
                             
@@ -249,6 +395,7 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                     "logs": visible_steps,
                     "hospital_config": hospital_config,
                     "scores": active_vettings.get(task_id, {}).get("scores", None),
+                    "fit": active_vettings.get(task_id, {}).get("fit", None),
                     "auto_email_sent": active_vettings.get(task_id, {}).get("auto_email_sent", False)
                 }).encode('utf-8'))
                 return
@@ -281,8 +428,30 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        global hospital_config
         parsed_url = urlparse(self.path)
         path = parsed_url.path
+
+        if not self._require_auth(path):
+            return
+
+        if path == '/api/submit_questionnaire':
+            content_length = int(self.headers['Content-Length'])
+            data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            try:
+                profile = web_integration.build_profile(data)
+                # mark this as the active profile used for vendor scoring
+                hospital_config['active_profile'] = profile.slug
+                if data.get('hospital'):
+                    hospital_config['org_name'] = data['hospital']
+                save_config(hospital_config)
+                self._send_json({
+                    "status": "success",
+                    "profile": web_integration.profile_to_dict(profile),
+                })
+            except Exception as e:
+                self._send_json({"status": "error", "message": str(e)}, status=400)
+            return
 
         if path == '/api/find_email':
             content_length = int(self.headers['Content-Length'])
@@ -377,8 +546,7 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
-            
-            global hospital_config
+
             hospital_config.update(data)
             save_config(hospital_config)
             
@@ -629,7 +797,7 @@ def run_server():
     os.makedirs(WEB_DIR, exist_ok=True)
     
     server_address = ('', PORT)
-    httpd = HTTPServer(server_address, HealthVetHTTPHandler)
+    httpd = ThreadingHTTPServer(server_address, HealthVetHTTPHandler)
     print(f"\n=========================================")
     print(f"HealthVet Doctor Dashboard Server Running")
     print(f"URL: http://localhost:{PORT}")

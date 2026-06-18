@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding Questionnaire — HealthVet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg:#0b1020; --panel:#121a2e; --panel2:#0f1729; --line:#22304d; --txt:#e8eefc; --muted:#92a0bd; --accent:#3b82f6; --good:#34d399; --warn:#fbbf24; --bad:#f87171; }
+        * { box-sizing:border-box; }
+        body { margin:0; font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--txt); }
+        .wrap { max-width:860px; margin:0 auto; padding:32px 20px 80px; }
+        header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+        header i { color:var(--accent); font-size:24px; }
+        header .t { font-family:Outfit,sans-serif; font-weight:800; font-size:22px; }
+        .sub { color:var(--muted); margin:0 0 26px; font-size:14px; }
+        .step { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 22px; margin-bottom:18px; }
+        .step h2 { font-family:Outfit,sans-serif; font-size:16px; margin:0 0 4px; }
+        .step .hint { color:var(--muted); font-size:13px; margin:0 0 16px; }
+        .rank-row, .slider-row, .db-row { display:flex; align-items:center; gap:14px; padding:9px 0; border-bottom:1px solid var(--panel2); }
+        .rank-row:last-child, .slider-row:last-child, .db-row:last-child { border-bottom:none; }
+        .rank-row .label, .slider-row .label, .db-row .label { flex:1; font-size:14px; }
+        .rank-row select { background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:7px 10px; font-size:14px; }
+        input[type=range] { width:200px; accent-color:var(--accent); }
+        .slider-val { width:26px; text-align:center; color:var(--accent); font-weight:600; }
+        .field { margin-bottom:14px; }
+        .field label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+        .field input, .field select { width:100%; background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:11px 12px; font-size:14px; }
+        .db-row input[type=checkbox] { width:18px; height:18px; accent-color:var(--accent); }
+        .choices { display:grid; gap:10px; }
+        .choice { display:flex; gap:10px; align-items:flex-start; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px; cursor:pointer; }
+        .choice input { margin-top:3px; accent-color:var(--accent); }
+        .actions { display:flex; gap:12px; justify-content:flex-end; margin-top:8px; }
+        .btn { border:none; border-radius:10px; padding:12px 20px; font-size:14px; font-weight:600; cursor:pointer; }
+        .btn.primary { background:var(--accent); color:#fff; }
+        .btn.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
+        .warnline { color:var(--warn); font-size:13px; min-height:18px; margin-top:4px; }
+        #result { display:none; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px; }
+        #result h2 { font-family:Outfit,sans-serif; margin:0 0 12px; }
+        .bar { height:10px; background:var(--panel2); border-radius:6px; overflow:hidden; margin:6px 0 2px; }
+        .bar > span { display:block; height:100%; background:linear-gradient(90deg,var(--accent),#60a5fa); }
+        .wrow { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--panel2); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header><i class="fa-solid fa-clipboard-list"></i><span class="t">Hospital Onboarding Questionnaire</span></header>
+    <p class="sub">~10 minutes. Your answers build a weighted scoring model used to rank and vet vendors against <em>your</em> hospital's priorities. Editable anytime.</p>
+
+    <div class="step">
+        <h2>Hospital</h2>
+        <div class="field"><label>Hospital name</label><input id="hospital" placeholder="e.g. Mercy Rural Health"></div>
+    </div>
+
+    <div class="step">
+        <h2>1 · Rank your priorities</h2>
+        <p class="hint">Assign each factor a unique rank (1 = most important … 9 = least). No duplicates.</p>
+        <div id="ranks"></div>
+        <div class="warnline" id="rank-warn"></div>
+    </div>
+
+    <div class="step">
+        <h2>2 · Fine-tune top concerns</h2>
+        <p class="hint">1 = low importance · 3 = neutral · 5 = critical.</p>
+        <div id="sliders"></div>
+    </div>
+
+    <div class="step">
+        <h2>3 · Deal-breakers</h2>
+        <p class="hint">Check anything that should hard-reject a vendor regardless of other strengths.</p>
+        <div id="dealbreakers" class="choices"></div>
+    </div>
+
+    <div class="step">
+        <h2>4 · Risk appetite</h2>
+        <div id="appetite" class="choices"></div>
+    </div>
+
+    <div class="step">
+        <h2>5 · Unknown factors</h2>
+        <p class="hint">When a vendor surfaces something this questionnaire didn't ask about:</p>
+        <div id="gapmode" class="choices">
+            <label class="choice"><input type="radio" name="gapmode" value="ask" checked>
+                <span><strong>Ask me</strong> — pause and ask one question, then permanently improve this profile (recommended).</span></label>
+            <label class="choice"><input type="radio" name="gapmode" value="auto">
+                <span><strong>Auto</strong> — make a best-guess weight and disclose every assumption in the report.</span></label>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a class="btn ghost" href="index.html">Cancel</a>
+        <button class="btn primary" id="submit">Build scoring profile</button>
+    </div>
+
+    <div id="result" style="margin-top:18px;"></div>
+</div>
+
+<script src="env.js"></script>
+<script src="api-base.js"></script>
+<script src="questionnaire.js"></script>
+</body>
+</html>
