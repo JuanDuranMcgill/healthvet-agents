@@ -22,14 +22,20 @@
   // Expose for non-fetch uses (e.g. links, redirects)
   window.apiUrl = (p) => BASE + p;
 
-  // Auth guard — skip on the login page itself.
+  // Auth guard — skip redirects on the login and questionnaire pages themselves.
   const onLoginPage = location.pathname.endsWith("/login.html");
+  const onQuestionnaire = location.pathname.endsWith("/questionnaire.html");
   window.addEventListener("DOMContentLoaded", async () => {
     try {
       const me = await fetch("/api/me").then((r) => r.json());
       window.HV_USER = me;
       if (me.auth_enabled && !me.authenticated && !onLoginPage) {
         location.href = "login.html";
+        return;
+      }
+      // First-time user (no scoring profile yet) → start with the questionnaire.
+      if (me.authenticated && me.onboarded === false && !onQuestionnaire && !onLoginPage) {
+        location.href = "questionnaire.html";
         return;
       }
       // populate a logout link / user name if present in the DOM

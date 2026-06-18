@@ -76,7 +76,12 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
         if origin:
             self.send_header('Access-Control-Allow-Origin', origin)
             self.send_header('Access-Control-Allow-Credentials', 'true')
+            # Chrome Private Network Access: a public site (Vercel) calling a
+            # private-network address (tailnet 100.x) is blocked without this.
+            self.send_header('Access-Control-Allow-Private-Network', 'true')
             self.send_header('Vary', 'Origin')
+        # Always revalidate so updated HTML/JS (e.g. api-base.js) is never stale.
+        self.send_header('Cache-Control', 'no-cache')
         super().end_headers()
 
     def do_OPTIONS(self):
@@ -155,12 +160,15 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
         # ---- auth routes ----
         if path == '/api/me':
             session, _ = self._session()
+            active_slug = hospital_config.get('active_profile')
+            onboarded = bool(active_slug and web_integration.load_profile(active_slug))
             self._send_json({
                 "auth_enabled": auth_google.auth_enabled(),
                 "authenticated": bool(session) or not auth_google.auth_enabled(),
                 "email": session["email"] if session else None,
                 "name": session["name"] if session else None,
                 "picture": session["picture"] if session else None,
+                "onboarded": onboarded,
             })
             return
 
