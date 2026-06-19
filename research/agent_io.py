@@ -6,6 +6,7 @@ contract ``ResearchResponse``.
 """
 from __future__ import annotations
 
+import os
 import re
 import uuid
 from typing import Any
@@ -16,12 +17,17 @@ from research.sanitize import sanitize
 
 _VENDOR_RE = re.compile(r"assessment on\s+(.+?)(?:[.\n]|$)", re.IGNORECASE)
 
-# Band handles are namespaced under one prefix across the room (unchanged here).
-HANDLE_PREFIX = "leejongmin1092"
+# Band handles are namespaced under one prefix across the room. Resolve each
+# role's handle from env (<ROLE>_HANDLE, e.g. RISK_HANDLE) so the chain works for
+# any Band account; fall back to BAND_HANDLE_PREFIX/<role> if that var is unset.
+HANDLE_PREFIX = os.getenv("BAND_HANDLE_PREFIX", "leejongmin1092")
 
 
 def reply_handle(role: str) -> str:
-    """Band @handle for a given agent role (e.g. 'risk' -> '@leejongmin1092/risk')."""
+    """Band @handle for a given agent role, from <ROLE>_HANDLE env or the prefix."""
+    env = os.getenv(f"{role.upper()}_HANDLE")
+    if env:
+        return env if env.startswith("@") else f"@{env}"
     return f"@{HANDLE_PREFIX}/{role}"
 
 

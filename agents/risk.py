@@ -154,7 +154,7 @@ def graph_factory(band_tools):
                 f"({len(directives)} directives) for room {thread_id[:8]}"
             )
         else:
-            mentions = ["@leejongmin1092/synthesis"]
+            mentions = [reply_handle("synthesis")]
             send_content = content
             logger.info(f"[Risk] final decision for room {thread_id[:8]}")
 

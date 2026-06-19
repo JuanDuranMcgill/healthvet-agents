@@ -14,7 +14,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from agents.llm import make_llm
 from research.engine import ResearchEngine
 from research.providers.factory import regulatory_providers
-from research.agent_io import vendor_from_messages, evidence_digest
+from research.agent_io import vendor_from_messages, evidence_digest, reply_handle
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("compliance")
@@ -69,7 +69,7 @@ def graph_factory(band_tools):
 
         result = await band_send.ainvoke({
             "content": report.content + "\n\nGap, please run your evidence gap analysis.",
-            "mentions": ["@leejongmin1092/gap"],
+            "mentions": [reply_handle("gap")],
         })
         logger.info(f"[Compliance] band_send result: {result}")
 

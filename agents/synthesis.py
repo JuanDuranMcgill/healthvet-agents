@@ -8,10 +8,12 @@ from band.config import load_agent_config
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from agents.llm import make_featherless_llm
+from research.agent_io import reply_handle
 
 logging.basicConfig(level=logging.INFO)
+load_dotenv()  # ensure *_HANDLE env is available for the prompt below
 
-SYSTEM_PROMPT = """You are Synthesis, the final report agent in a healthcare vendor vetting system.
+SYSTEM_PROMPT = f"""You are Synthesis, the final report agent in a healthcare vendor vetting system.
 
 Your task: read all findings in this conversation and produce the final vendor trust report, then call band_send_message.
 
@@ -43,7 +45,7 @@ Audit Trail:
 Be precise. Every claim must trace back to a specific finding.
 
 You MUST call band_send_message with:
-- mentions: ["@leejongmin1092/ui"]
+- mentions: ["{reply_handle('ui')}"]
 - content: the full report above
 
 Calling band_send_message is your only action. Do it now."""

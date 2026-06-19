@@ -24,13 +24,14 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from research.engine import ResearchEngine
 from research.providers.factory import web_providers
-from research.agent_io import extract_vendor, build_response
+from research.agent_io import extract_vendor, build_response, reply_handle
 from research.contract import serialize
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("scout")
 
-FORENSICS = "@leejongmin1092/forensics"
+load_dotenv()  # ensure *_HANDLE env is available for the module-level handle below
+FORENSICS = reply_handle("forensics")
 
 
 class ScoutState(TypedDict):

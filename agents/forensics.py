@@ -8,10 +8,12 @@ from band.config import load_agent_config
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from agents.llm import make_llm
+from research.agent_io import reply_handle
 
 logging.basicConfig(level=logging.INFO)
+load_dotenv()  # ensure *_HANDLE env is available for the prompt below
 
-SYSTEM_PROMPT = """You are Forensics, a healthcare vendor evidence analyst.
+SYSTEM_PROMPT = f"""You are Forensics, a healthcare vendor evidence analyst.
 
 Your task: analyze the vendor research in this conversation and call band_send_message with your findings.
 
@@ -24,7 +26,7 @@ Write this report based on what Scout found:
 - OVERALL: CLEAN / ISSUES_FOUND / CRITICAL / INSUFFICIENT_EVIDENCE
 
 You MUST call band_send_message with:
-- mentions: ["@leejongmin1092/compliance"]
+- mentions: ["{reply_handle('compliance')}"]
 - content: the report above + "Compliance, please assess the regulatory standing."
 
 Calling band_send_message is your only action. Call it exactly once. Do it now."""
