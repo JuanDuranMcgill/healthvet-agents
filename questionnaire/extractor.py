@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 
 def extract_findings(report_text: str):
     load_dotenv()
-    api_key = os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY')
+    api_key = os.environ.get('FEATHERLESS_API_KEY')
     if not api_key:
-        raise ValueError("LLM_API_KEY (or GROQ_API_KEY) is not set.")
-    base_url = os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1')
-    model = os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile')
+        raise ValueError("FEATHERLESS_API_KEY is not set.")
+    base_url = os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1')
+    model = os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct')
 
     prompt = f"""You are an analytical extraction engine for a healthcare vendor vetting system.
 Read the following concatenated agent reports and extract the findings into a structured JSON format.

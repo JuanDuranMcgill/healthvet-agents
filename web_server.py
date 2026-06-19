@@ -303,9 +303,9 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                             
                             try:
                                 prompt = f"Analyze this healthcare vendor assessment report. Provide a JSON response with EXACTLY these keys:\n'verdict': (must be EXACTLY 'APPROVE', 'REJECT', or 'ESCALATE'),\n'security': (integer 0-100),\n'clinical': (integer 0-100),\n'compliance': (integer 0-100),\n'speed': (integer 0-100),\n'cost': (integer 0-100),\n'overall': (integer 0-100).\nDo not output anything else but valid JSON.\n\nReport:\n{report}"
-                                headers = {"Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}", "Content-Type": "application/json"}
-                                req_data = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 150}
-                                resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                                headers = {"Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}", "Content-Type": "application/json"}
+                                req_data = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 150}
+                                resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                                 content = resp['choices'][0]['message']['content'].strip()
                                 if content.startswith("```json"): content = content[7:-3]
                                 if content.startswith("```"): content = content[3:]
@@ -357,9 +357,9 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                                         results = DDGS().text(f"{v_name} company security compliance contact email address", max_results=5)
                                         search_text = json.dumps(results)
                                         prompt = f"Based on the following search results for {v_name}, extract their support, compliance, or security contact email address. Return ONLY the email address and no other text. If you cannot find one, return 'security@{v_name.replace(' ', '').lower()}.com'.\n\nSearch Results: {search_text}"
-                                        headers = {"Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}", "Content-Type": "application/json"}
-                                        req_data = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 50}
-                                        resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                                        headers = {"Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}", "Content-Type": "application/json"}
+                                        req_data = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 50}
+                                        resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                                         email = resp['choices'][0]['message']['content'].strip()
                                         import re
                                         match = re.search(r'[\w\.-]+@[\w\.-]+', email)
@@ -367,8 +367,8 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                                         
                                         # 2. Draft Email
                                         prompt_draft = f"Based on the following vendor assessment report for {v_name}, draft a short, professional email (3-4 sentences) to the vendor's security team ({email}) requesting the specific missing documents or clarifications mentioned in the 'Recommended Next Steps' or 'Key Risks'. Do not include placeholders, sign it as 'HealthVet Security Team'.\n\nReport: {r_text}"
-                                        req_data_draft = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "user", "content": prompt_draft}], "max_tokens": 150}
-                                        resp_draft = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data_draft).json()
+                                        req_data_draft = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "user", "content": prompt_draft}], "max_tokens": 150}
+                                        resp_draft = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data_draft).json()
                                         draft_body = resp_draft['choices'][0]['message']['content'].strip()
                                         
                                         # 3. Send Email via SendGrid
@@ -493,15 +493,15 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                 prompt = f"Based on the following search results for {vendor}, extract their support, compliance, or security contact email address. Return ONLY the email address and no other text. If you cannot find one, return 'security@{vendor.replace(' ', '').lower()}.com'.\n\nSearch Results: {search_text}"
                 
                 headers = {
-                    "Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}",
+                    "Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}",
                     "Content-Type": "application/json"
                 }
                 req_data = {
-                    "model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'),
+                    "model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'),
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 50
                 }
-                resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                 email = resp['choices'][0]['message']['content'].strip()
                 import re
                 match = re.search(r'[\w\.-]+@[\w\.-]+', email)
@@ -692,9 +692,9 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                 import requests
                 load_dotenv()
                 prompt = f"Based on the following vendor assessment report, extract exactly 3 short bullet points for 'Pros' and 3 short bullet points for 'Cons' regarding the vendor. Format as JSON: {{\"pros\": [\"pro1\", \"pro2\", \"pro3\"], \"cons\": [\"con1\", \"con2\", \"con3\"]}}. Do not include markdown blocks or any other text.\n\nReport: {report_text}"
-                headers = {"Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}", "Content-Type": "application/json"}
-                req_data = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 150}
-                resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                headers = {"Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}", "Content-Type": "application/json"}
+                req_data = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 150}
+                resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                 
                 content = resp['choices'][0]['message']['content'].strip()
                 if content.startswith("```json"):
@@ -724,9 +724,9 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                 load_dotenv()
                 
                 prompt = f"The healthcare vendor '{vendor}' received a verdict of {verdict}. Provide a JSON response with these keys EXACTLY:\n'tldr': A 2-sentence summary specifically written for a Chief Medical Officer.\n'alternatives': A list of exactly 3 strings containing names of alternative healthcare vendors in this space.\n'phi_risk': Either 'Low', 'Medium', or 'High'.\n\nReport:\n{report_text}"
-                headers = {"Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}", "Content-Type": "application/json"}
-                req_data = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 200}
-                resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                headers = {"Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}", "Content-Type": "application/json"}
+                req_data = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 200}
+                resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                 
                 content = resp['choices'][0]['message']['content'].strip()
                 if content.startswith("```json"): content = content[7:-3]
@@ -756,9 +756,9 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                 load_dotenv()
                 
                 system_prompt = f"You are a healthcare compliance expert assisting a doctor. You have just audited the vendor '{vendor}'. Use the following assessment report to answer the user's question concisely. Be brief and professional.\n\nReport:\n{report_text}"
-                headers = {"Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}", "Content-Type": "application/json"}
-                req_data = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_msg}], "max_tokens": 300}
-                resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                headers = {"Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}", "Content-Type": "application/json"}
+                req_data = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_msg}], "max_tokens": 300}
+                resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                 
                 content = resp['choices'][0]['message']['content'].strip()
             except Exception as e:
@@ -786,9 +786,9 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
                 load_dotenv()
                 
                 prompt = f"Compare two healthcare vendors based on their overall security, clinical, and compliance profiles. Vendor A is '{vendor_a.get('vendor')}' (Verdict: {vendor_a.get('verdict')}). Vendor B is '{vendor_b.get('vendor')}' (Verdict: {vendor_b.get('verdict')}). Provide a 2-3 sentence final recommendation on which vendor is superior and why. Return exactly this JSON: {{\"winner\": \"Name of winning vendor\", \"justification\": \"Your 2-3 sentence explanation\"}}"
-                headers = {"Authorization": f"Bearer {(os.environ.get('LLM_API_KEY') or os.environ.get('GROQ_API_KEY'))}", "Content-Type": "application/json"}
-                req_data = {"model": os.environ.get('LLM_MODEL', 'llama-3.3-70b-versatile'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 200}
-                resp = requests.post((os.environ.get('LLM_BASE_URL', 'https://api.groq.com/openai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
+                headers = {"Authorization": f"Bearer {os.environ.get('FEATHERLESS_API_KEY')}", "Content-Type": "application/json"}
+                req_data = {"model": os.environ.get('FEATHERLESS_MODEL', 'Qwen/Qwen2.5-72B-Instruct'), "messages": [{"role": "user", "content": prompt}], "max_tokens": 200}
+                resp = requests.post((os.environ.get('FEATHERLESS_BASE_URL', 'https://api.featherless.ai/v1') + "/chat/completions"), headers=headers, json=req_data).json()
                 
                 content = resp['choices'][0]['message']['content'].strip()
                 if content.startswith("```json"): content = content[7:-3]

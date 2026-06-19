@@ -1,9 +1,14 @@
 """
 Shared LLM factory — provider-agnostic via env vars (OpenAI-compatible APIs).
 
-Defaults to Groq (free, no card, fast Llama 3.3 70B). Swap providers by setting
-LLM_BASE_URL / LLM_API_KEY / LLM_MODEL (e.g. OpenRouter, Gemini OpenAI endpoint,
-or back to AIML/Featherless) — no code change needed.
+Architecture (the sponsors' stack):
+  - make_llm()            -> AI/ML API  (the 6 agents: gpt-4o / gpt-4o-mini)
+  - make_featherless_llm()-> Featherless (Synthesis: Qwen2.5-72B)
+
+Every endpoint/model/key is env-overridable, so you can repoint to any
+OpenAI-compatible provider (e.g. free Groq) without code changes:
+  AIML_BASE_URL / AIML_API_KEY / AIML_MODEL / AIML_MODEL_SMALL
+  FEATHERLESS_BASE_URL / FEATHERLESS_API_KEY / FEATHERLESS_MODEL
 
 ChatOpenAINoStrict drops strict=True from bind_tools: langchain.agents.create_agent
 hardcodes strict=True, which 400s on providers whose tool schemas contain anyOf
@@ -12,10 +17,16 @@ hardcodes strict=True, which 400s on providers whose tool schemas contain anyOf
 import os
 from langchain_openai import ChatOpenAI
 
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("AIML_API_KEY")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
-LLM_MODEL_SMALL = os.getenv("LLM_MODEL_SMALL", "llama-3.1-8b-instant")
+# --- Agents: AI/ML API ---
+AIML_BASE_URL = os.getenv("AIML_BASE_URL", "https://api.aimlapi.com/v1")
+AIML_API_KEY = os.getenv("AIML_API_KEY")
+AIML_MODEL = os.getenv("AIML_MODEL", "gpt-4o")
+AIML_MODEL_SMALL = os.getenv("AIML_MODEL_SMALL", "gpt-4o-mini")
+
+# --- Synthesis: Featherless ---
+FEATHERLESS_BASE_URL = os.getenv("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1")
+FEATHERLESS_API_KEY = os.getenv("FEATHERLESS_API_KEY")
+FEATHERLESS_MODEL = os.getenv("FEATHERLESS_MODEL", "Qwen/Qwen2.5-72B-Instruct")
 
 
 class ChatOpenAINoStrict(ChatOpenAI):
@@ -24,19 +35,17 @@ class ChatOpenAINoStrict(ChatOpenAI):
 
 
 def make_llm(model: str = "gpt-4o") -> ChatOpenAINoStrict:
-    # Map the old "mini" tier to the small model; everything else to the main model.
-    resolved = LLM_MODEL_SMALL if "mini" in (model or "") else LLM_MODEL
+    resolved = AIML_MODEL_SMALL if "mini" in (model or "") else AIML_MODEL
     return ChatOpenAINoStrict(
-        base_url=LLM_BASE_URL,
-        api_key=LLM_API_KEY,
+        base_url=AIML_BASE_URL,
+        api_key=AIML_API_KEY,
         model=resolved,
     )
 
 
 def make_featherless_llm(model: str = None) -> ChatOpenAINoStrict:
-    # Kept for the Synthesis agent; now points at the same provider as make_llm.
     return ChatOpenAINoStrict(
-        base_url=LLM_BASE_URL,
-        api_key=LLM_API_KEY,
-        model=LLM_MODEL,
+        base_url=FEATHERLESS_BASE_URL,
+        api_key=FEATHERLESS_API_KEY,
+        model=model or FEATHERLESS_MODEL,
     )
