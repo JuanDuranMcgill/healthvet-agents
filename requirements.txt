@@ -8,5 +8,6 @@ python-dotenv
 exa-py
 duckduckgo-search
 sendgrid
-requests
-pyyaml
+httpx==0.28.1
+requests==2.34.2
+pyyaml==6.0.3

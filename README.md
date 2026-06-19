@@ -2,7 +2,9 @@
 
 **Band of Agents Hackathon 2026 · Track 3: Regulated & High-Stakes Workflows**
 
-A multi-agent system that automates healthcare technology vendor due diligence. Six specialized AI agents coordinate through Band to vet vendors that U.S. health systems are considering purchasing — a process that normally takes 2–6 weeks of manual work.
+A multi-agent system that automates healthcare technology vendor due diligence. Seven specialized AI agents coordinate through Band to vet vendors that U.S. health systems are considering purchasing — a process that normally takes 2–6 weeks of manual work.
+
+Coordination is a **versioned message contract**, not loose prose: agents exchange structured `research_request` / `research_response` messages with correlation IDs and status, so the Band room is a traceable audit trail. A standalone, **non-LangGraph** research worker collaborates across frameworks, and the Risk veto is a targeted re-investigation negotiation rather than a blind full re-run. See [research/README.md](research/README.md).
 
 ---
 
@@ -21,7 +23,7 @@ This takes weeks and requires multiple specialized reviewers. Half the evidence 
 
 ## How It Works
 
-Six agents coordinate through a shared Band room. Each agent handles one layer of the vetting pipeline and hands off to the next via @mention:
+Six pipeline agents coordinate through a shared Band room (plus a standalone Research worker). Each pipeline agent handles one layer of the vetting and hands off to the next via @mention:
 
 ```
 User → @Scout
@@ -38,15 +40,29 @@ User → @Scout
                     ↓
        @Risk
          adversarial cross-reference → APPROVE / ESCALATE / REJECT
-         (if evidence is too thin: issues VETO, sends @Scout back for re-investigation)
-                    ↓
+         (if evidence is too thin: posts a structured research_request to @Research)
+                    |
+                    |   re-investigation negotiation:
+                    |   @Risk --research_request(gap_directives)--> @Research
+                    |   @Research --research_response(evidence)----> @Risk
+                    ↓   (@Research is a standalone, non-LangGraph worker)
        @Synthesis
          generates final auditable vendor trust report → @User
 ```
 
-### The Veto Loop
+Two agents call the shared retrieval engine in different lanes: **Scout** runs the
+broad web sweep; **Compliance** runs the regulatory tiers (openFDA, OCR breach)
+itself. The **Research** worker answers gap-directed re-investigation requests.
 
-Risk has veto authority. If it finds 2+ critical evidence gaps, it rejects the first run and sends Scout back with specific re-investigation directives. Scout re-runs targeted searches. The full chain fires again. Risk makes a final, non-vetoable verdict. This loop runs at most once per vetting session.
+### The Veto Loop (structured re-investigation)
+
+Risk has veto authority. If it finds critical evidence gaps, instead of a blind
+full re-run it posts a `research_request` carrying specific `gap_directives` to
+the standalone **Research** worker. The worker runs *only* the scoped retrieval
+for those directives and replies with a correlated `research_response`
+(`complete`, or `needs_reinvestigation` if still unresolved). Risk reads the
+correlated evidence and makes a final, non-vetoable verdict. The loop runs at
+most once per session and is a genuine negotiation through Band.
 
 ---
 
@@ -60,6 +76,9 @@ Risk has veto authority. If it finds 2+ critical evidence gaps, it rejects the f
 | 4 | **Gap** | `gpt-4o` | Evidence gap mapping across 9 categories with severity ratings |
 | 5 | **Risk** | `gpt-4o` | Adversarial review + final verdict with veto authority |
 | 6 | **Synthesis** | `Qwen/Qwen2.5-72B-Instruct` | Final auditable vendor trust report |
+| 7 | **Research** | _(no LLM agent loop)_ | Standalone non-LangGraph worker; answers `research_request` messages via the shared retrieval engine |
+
+Scout and Compliance also drive the shared retrieval engine directly (web lane and regulatory lane respectively). The Research worker is built on Band's `SimpleAdapter` rather than LangGraph — a deliberate second coordination pattern collaborating across frameworks.
 
 **LLM Providers:**
 - [AI/ML API](https://aimlapi.com) — unified frontier model access (gpt-4o, gpt-4o-mini)
@@ -100,11 +119,11 @@ pip install -r requirements.txt
 
 ---
 
-### Step 2 — Create 6 agents in Band
+### Step 2 — Create 7 agents in Band
 
-You need to create one External Agent in Band for each of the 6 roles. Do this at [app.band.ai/agents](https://app.band.ai/agents).
+You need to create one External Agent in Band for each of the 7 roles. Do this at [app.band.ai/agents](https://app.band.ai/agents).
 
-For **each** of the six agents below, repeat these steps:
+For **each** of the seven agents below, repeat these steps:
 
 1. Click **New Agent** → **External Agent**
 2. Enter the agent name (use the exact names in the table)
@@ -119,19 +138,20 @@ For **each** of the six agents below, repeat these steps:
 | `Gap` | Evidence gap analyst |
 | `Risk` | Final decision authority |
 | `Synthesis` | Report generator |
+| `Research` | Standalone retrieval worker (non-LangGraph) |
 
 > The agent names don't need to match exactly in Band's UI — what matters is that each agent's `agent_id` and `api_key` are placed under the right key in `agent_config.yaml` (see Step 4).
 
 ---
 
-### Step 3 — Create a Band room and add all 6 agents
+### Step 3 — Create a Band room and add all 7 agents
 
 1. In the Band app, click **New Room** (or use an existing room)
 2. Open the room settings → **Members** → **Add Member**
-3. Add all 6 agents you created: Scout, Forensics, Compliance, Gap, Risk, Synthesis
+3. Add all 7 agents you created: Scout, Forensics, Compliance, Gap, Risk, Synthesis, Research
 4. Also note your own Band @handle (e.g. `@yourhandle`) — you'll use it to trigger Scout
 
-> All 6 agents must be members of the same room. The pipeline passes messages between them via @mentions, so they all need to be present to receive triggers.
+> All 7 agents must be members of the same room. The pipeline passes messages between them via @mentions, so they all need to be present to receive triggers.
 
 ---
 
@@ -206,13 +226,13 @@ synthesis:
 
 The agents reference each other by @handle. You need to update these to match your Band username.
 
-Search for all @mentions across the agent files:
+Search for all @mentions across the code:
 
 ```bash
-grep -r "leejongmin1092" agents/
+grep -rn "leejongmin1092" agents/ research/
 ```
 
-Then replace every occurrence of `leejongmin1092` with your own Band handle. The agents that send @mentions are: `scout.py`, `forensics.py`, `compliance.py`, `gap.py`, `risk.py`, and `synthesis.py`.
+Then replace every occurrence of `leejongmin1092` with your own Band handle. The agents that send @mentions are `scout.py`, `forensics.py`, `compliance.py`, `gap.py`, `risk.py`, and `synthesis.py`; the shared handle prefix the Risk veto and the Research worker use lives in [research/agent_io.py](research/agent_io.py) (`HANDLE_PREFIX`).
 
 ---
 
@@ -222,7 +242,7 @@ Then replace every occurrence of `leejongmin1092` with your own Band handle. The
 ./start.sh
 ```
 
-This starts all 6 agents in the background and writes logs to `logs/<agent>.log`.
+This starts all 7 agents in the background and writes logs to `logs/<agent>.log`.
 
 Verify they connected:
 
@@ -284,7 +304,7 @@ Veradigm (formerly Allscripts) is a healthcare data and EHR company with a docum
 @yourhandle/scout Please run a full vendor assessment on Veradigm
 ```
 
-**Expected output chain:**
+**Expected output chain** (illustrative — Scout and Research messages carry a one-line human summary followed by a structured JSON payload; the lines below show the human-readable summaries):
 
 ```
 Scout:      SCOUT RESEARCH REPORT: Veradigm
@@ -317,28 +337,20 @@ Gap:        GAP ANALYSIS REPORT: Veradigm
             Critical gaps: 3 | Overall: NEEDS_MORE_EVIDENCE
             → @Risk
 
-                    *** VETO LOOP FIRES ***
+              *** STRUCTURED RE-INVESTIGATION FIRES ***
 
-Risk:       🚨 VETO #1 — Re-investigation Required
-            Evidence Quality Score: 3
-            Final Verdict: REJECT
-            VETO DIRECTIVES:
-              - Evaluation of SOC 2 Type II compliance documentation
-              - Verification of FDA clearance processes
-              - Investigation of ONC certification status
-            → @Scout (re-investigation)
+Risk:       🚨 VETO — structured re-investigation requested
+            Fit Score: 31/100 · Verdict: REJECT
+            research_request (request_id ab12cd34) → @Research
+              gap_directives:
+                - Find authoritative evidence for 'regulatory_compliance' (score 3/10)
+                - Find authoritative evidence for 'security_breach' (score 4/10)
 
-Scout:      SCOUT RESEARCH REPORT: Veradigm (RE-INVESTIGATION)
-            SOC 2 Type II: Veradigm claims SOC 2, Type 2 compliance; documentation
-            exists on their legal security program page...
-            ONC Certification: Veradigm EHR achieved 2015 ONC Health IT Certification...
-            → @Forensics
-
-            [Forensics → Compliance → Gap chain re-runs with updated findings]
-
-Gap:        Critical gaps: 2 (HIPAA BAA, Subprocessor transparency)
-            Overall: NEEDS_MORE_EVIDENCE
-            → @Risk
+Research:   research_response (request_id ab12cd34, status=complete) → @Risk
+            [REGULATORY, openfda] 510(k) clearance record(s) for Veradigm devices...
+            [REGULATORY, ocr_breach] OCR breach portal entries...
+            (scoped retrieval for the directives only; a failed lookup is reported
+             as FAILED, never as "not found")
 
 Risk:       RISK VERDICT: Veradigm — FINAL
             Evidence Quality Score: 4
@@ -388,8 +400,19 @@ healthvet-agents/
 │   ├── forensics.py     # Document and certification analysis
 │   ├── compliance.py    # Regulatory standing checker (graph_factory)
 │   ├── gap.py           # Evidence gap analyst (graph_factory)
-│   ├── risk.py          # Final decision authority + veto loop + scoring (graph_factory)
-│   └── synthesis.py     # Auditable trust report generator
+│   ├── risk.py          # Final decision authority + structured veto loop + scoring (graph_factory)
+│   ├── synthesis.py     # Auditable trust report generator
+│   └── research.py      # Standalone non-LangGraph retrieval worker (SimpleAdapter)
+├── research/            # Retrieval engine + Band message contract (see research/README.md)
+│   ├── engine.py        # Concurrent fan-out, dedup, tier-then-relevance ranking
+│   ├── contract.py      # Versioned research_request / research_response schema
+│   ├── models.py        # Evidence, EvidenceBundle, SourceTier
+│   ├── planner.py       # LLM query expansion + templated fallback
+│   ├── cache.py         # TTL query cache (disable via RESEARCH_CACHE_DISABLED)
+│   ├── sanitize.py      # Prompt-injection hygiene for untrusted content
+│   ├── agent_io.py      # Dep-free helpers shared by the agents
+│   ├── providers/       # Tavily, Exa, DuckDuckGo, openFDA, OCR-breach adapters
+│   └── tests/           # unittest suite (providers + Band mocked)
 ├── questionnaire/
 │   ├── cli.py           # 4-phase hospital onboarding wizard (CLI)
 │   ├── profile.py       # HospitalProfile — weighted categories, deal-breakers, thresholds
@@ -403,7 +426,7 @@ healthvet-agents/
 │   └── style.css        # Styles
 ├── web_server.py        # HTTP dashboard server (port 8000)
 ├── run_agents.py        # Alternative launcher (supports --agent flag for single agent)
-├── start.sh             # Starts all 6 agents with per-agent log files
+├── start.sh             # Starts all 7 agents with per-agent log files
 ├── .env.example         # API key template (copy to .env)
 ├── agent_config.yaml.example  # Band credential template (copy to agent_config.yaml)
 ├── requirements.txt
@@ -420,7 +443,11 @@ healthvet-agents/
 
 **Veto state via module-level dict** — Risk tracks vetoed rooms in a module-level Python `set` (`_vetoed_rooms`), not in LangGraph's InMemorySaver. The Band SDK does not guarantee state persistence between message triggers for graph_factory agents. The module-level set persists for the lifetime of the process, correctly capping the veto loop at one round per room.
 
-**Sequential chain** — The pipeline is fully sequential (Scout → Forensics → Compliance → Gap → Risk → Synthesis). Each agent's `band_send_message` call includes the next agent's @mention. Band delivers the message; the next agent wakes up. No polling, no orchestrator.
+**Message-driven coordination** — The chain advances by @mention (Scout → Forensics → Compliance → Gap → Risk → Synthesis): each agent's `band_send_message` includes the next agent's @mention and Band wakes that agent. There is no central orchestrator. On top of this, Risk and the standalone Research worker exchange a structured `research_request` / `research_response` contract for gap-directed re-investigation, so coordination state (correlation IDs, status) is explicit in the room rather than implied by prose.
+
+**Structured Band contract + cross-framework worker** — `research/contract.py` defines a versioned schema embedded in message content (a human summary line + fenced JSON), so downstream agents parse a contract instead of scraping text. The Research worker (`agents/research.py`) is built on Band's `SimpleAdapter`, **not** LangGraph — a second coordination pattern that collaborates with the LangGraph agents purely through the shared message contract.
+
+**Anti-fabrication evidence** — The retrieval engine never invents a value to mask a failure. `EvidenceBundle` keeps *not-found*, *not-searched*, and *failed* as three distinct states, and ranking is tier-first (regulatory > vendor marketing). Retrieved text is sanitized as untrusted before any LLM sees it.
 
 ---
 
@@ -428,8 +455,11 @@ healthvet-agents/
 
 | Feature | Status |
 |---|---|
-| 6-agent sequential pipeline | ✅ Done |
-| Risk veto loop (re-investigation, capped at 1) | ✅ Done |
+| 6-agent message-driven pipeline | ✅ Done |
+| Versioned Band research contract (request/response, correlation IDs, status) | ✅ Done |
+| Multi-provider retrieval engine (web + openFDA + OCR), tier-ranked, anti-fabrication | ✅ Done |
+| Standalone non-LangGraph Research worker (cross-framework) | ✅ Done |
+| Structured Risk veto → scoped re-investigation negotiation (capped at 1) | ✅ Done |
 | Quantitative scoring rubric (weighted fit 0–100, deal-breakers) | ✅ Done |
 | Hospital criteria setup wizard (4-phase CLI onboarding) | ✅ Done |
 | Web dashboard (live status, scorecard, vendor comparison, CSV export) | ✅ Done |
@@ -447,6 +477,7 @@ healthvet-agents/
 - [LangGraph](https://langchain-ai.github.io/langgraph/) — agent framework
 - [Tavily](https://tavily.com) — web search
 - [Exa](https://exa.ai) — semantic search
+- [openFDA](https://open.fda.gov) — authoritative device clearance records (regulatory tier)
 
 ---
 

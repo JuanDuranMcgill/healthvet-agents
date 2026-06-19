@@ -30,3 +30,9 @@ risk:
 synthesis:
   agent_id: "your-synthesis-agent-uuid"
   api_key: "your-synthesis-band-api-key"
+
+# Research is the standalone (non-LangGraph) retrieval worker. Create it as an
+# External Agent like the others and add it to the same room.
+research:
+  agent_id: "your-research-agent-uuid"
+  api_key: "your-research-band-api-key"

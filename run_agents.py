@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch all five HealthVet agents in separate processes."""
+"""Launch all HealthVet agents in separate processes."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-AGENTS = ("scout", "forensics", "compliance", "gap", "risk", "synthesis")
+AGENTS = ("scout", "forensics", "compliance", "gap", "risk", "synthesis", "research")
 
 
 def resolve_python(root: Path) -> Path:
@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument(
         "--agent",
         choices=AGENTS,
-        help="Run a single agent instead of all five",
+        help="Run a single agent instead of all of them",
     )
     args = parser.parse_args()
 

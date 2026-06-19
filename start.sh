@@ -9,13 +9,14 @@ mkdir -p logs
 # Activate venv
 source venv/bin/activate
 
-# Start all 6 agents, each with its own log file
+# Start all 7 agents, each with its own log file
 python agents/scout.py      > logs/scout.log      2>&1 &  echo "Scout      PID $!"
 python agents/forensics.py  > logs/forensics.log  2>&1 &  echo "Forensics  PID $!"
 python agents/compliance.py > logs/compliance.log 2>&1 &  echo "Compliance PID $!"
 python agents/gap.py        > logs/gap.log        2>&1 &  echo "Gap        PID $!"
 python agents/risk.py       > logs/risk.log       2>&1 &  echo "Risk       PID $!"
 python agents/synthesis.py  > logs/synthesis.log  2>&1 &  echo "Synthesis  PID $!"
+python agents/research.py   > logs/research.log   2>&1 &  echo "Research   PID $!"
 
 echo ""
 echo "All agents started. Watch logs with:"
