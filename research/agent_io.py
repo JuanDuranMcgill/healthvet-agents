@@ -7,10 +7,12 @@ contract ``ResearchResponse``.
 from __future__ import annotations
 
 import re
+import uuid
 from typing import Any
 
-from research.contract import ResearchRequest, ResearchResponse, Status
+from research.contract import ResearchRequest, ResearchResponse, Status, parse
 from research.models import EvidenceBundle
+from research.sanitize import sanitize
 
 _VENDOR_RE = re.compile(r"assessment on\s+(.+?)(?:[.\n]|$)", re.IGNORECASE)
 
@@ -80,6 +82,74 @@ def resolution_status(request: ResearchRequest, bundle: EvidenceBundle) -> Statu
         if bundle.state_for(f"{request.vendor} {directive}") != "found"
     ]
     return Status.NEEDS_REINVESTIGATION if unresolved else Status.COMPLETE
+
+
+def build_research_request(
+    vendor: str,
+    requested_by: str,
+    gap_directives: list[str],
+    goals: tuple[str, ...] = (),
+    priority: str = "high",
+) -> ResearchRequest:
+    """Build a correlatable research_request for a scoped re-investigation."""
+    return ResearchRequest(
+        request_id=uuid.uuid4().hex[:12],
+        requested_by=requested_by,
+        vendor=vendor,
+        summary=(
+            f"{requested_by.title()} requests scoped re-investigation of "
+            f"{len(gap_directives)} gap(s) for {vendor}"
+        ),
+        goals=tuple(goals),
+        gap_directives=tuple(gap_directives),
+        priority=priority,
+    )
+
+
+def vendor_from_messages(contents: list[str]) -> str:
+    """Find the vendor: prefer a parsed contract message, else prose extraction."""
+    for content in contents:
+        parsed = parse(content)
+        if parsed is not None and getattr(parsed, "vendor", ""):
+            return parsed.vendor
+    for content in contents:
+        vendor = extract_vendor(content)
+        if vendor:
+            return vendor
+    return ""
+
+
+def evidence_digest(bundle: EvidenceBundle, header: str = "Evidence") -> str:
+    """Human/LLM-readable digest of a bundle. Snippets are sanitized as untrusted.
+
+    Keeps 'failed' distinct from 'not found' so the reader is never misled.
+    """
+    if not bundle.evidence and not bundle.failures:
+        return f"{header}: no evidence found, and no lookups failed."
+    lines = [f"{header}:"]
+    for i, ev in enumerate(bundle.evidence, 1):
+        lines.append(f"[{i}] ({ev.source_tier.name}, {ev.provider}) {ev.source_url}")
+        lines.append(sanitize(ev.snippet))
+    if bundle.failures:
+        fails = ", ".join(f"{f.provider} ({f.error})" for f in bundle.failures)
+        lines.append(f"Lookups that FAILED (distinct from 'not found'): {fails}")
+    return "\n".join(lines)
+
+
+def directives_from_breakdown(breakdown: list[dict], threshold: int = 5) -> list[str]:
+    """Turn low-scoring scorecard categories into targeted re-investigation directives.
+
+    Reads already-computed scores only — it does not change any scoring logic.
+    """
+    directives = []
+    for item in breakdown:
+        if item.get("score", 10) < threshold:
+            category = item.get("category", "unknown")
+            directives.append(
+                f"Find authoritative evidence for '{category}' "
+                f"(current score {item.get('score')}/10)"
+            )
+    return directives
 
 
 async def run_research_request(

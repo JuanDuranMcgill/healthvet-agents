@@ -5,13 +5,16 @@ from typing import TypedDict, Annotated
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 from band import Agent
 from band.adapters.langgraph import LangGraphAdapter
 from band.config import load_agent_config
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from agents.llm import make_llm
+from research.engine import ResearchEngine
+from research.providers.factory import regulatory_providers
+from research.agent_io import vendor_from_messages, evidence_digest
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("compliance")
@@ -39,13 +42,28 @@ class ComplianceState(TypedDict):
 def graph_factory(band_tools):
     band_send = next(t for t in band_tools if "send_message" in t.name)
     llm = make_llm("gpt-4o-mini")
+    # Compliance owns the regulatory lane — it calls the engine itself rather
+    # than relying on Scout to surface authoritative regulatory evidence (A3).
+    engine = ResearchEngine(providers=regulatory_providers())
 
     async def compliance_node(state: ComplianceState) -> dict:
         messages = state.get("messages", [])
         logger.info(f"[Compliance] received {len(messages)} messages")
 
+        contents = [m.content for m in messages if hasattr(m, "content")]
+        vendor = vendor_from_messages(contents) or "the vendor"
+        bundle = await engine.gather(
+            vendor, goals=["FDA device clearances", "HIPAA breach history"]
+        )
+        reg_context = evidence_digest(bundle, header=f"Authoritative regulatory evidence for {vendor}")
+        logger.info(
+            "[Compliance] regulatory lane: %d evidence, %d failures",
+            len(bundle.evidence), len(bundle.failures),
+        )
+
         report = await llm.ainvoke(
-            [SystemMessage(content=COMPLIANCE_PROMPT)] + list(messages)
+            [SystemMessage(content=COMPLIANCE_PROMPT), HumanMessage(content=reg_context)]
+            + list(messages)
         )
         logger.info(f"[Compliance] report: {report.content[:200]}")
 

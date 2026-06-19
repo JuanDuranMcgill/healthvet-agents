@@ -13,6 +13,13 @@ from band.config import load_agent_config
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from agents.llm import make_llm
+from research.contract import serialize
+from research.agent_io import (
+    vendor_from_messages,
+    directives_from_breakdown,
+    build_research_request,
+    reply_handle,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("risk")
@@ -78,8 +85,10 @@ def graph_factory(band_tools):
         logger.info(f"[Risk] room={thread_id[:8]}, messages={len(messages)}, has_vetoed={has_vetoed}")
 
         # Gather all text from messages
-        full_text = "\n".join(m.content for m in messages if hasattr(m, "content"))
-        
+        message_contents = [m.content for m in messages if hasattr(m, "content")]
+        full_text = "\n".join(message_contents)
+        vendor = vendor_from_messages(message_contents) or "the vendor"
+
         import os
         from questionnaire.profile import HospitalProfile
         from questionnaire.extractor import extract_findings
@@ -131,10 +140,19 @@ def graph_factory(band_tools):
 
         if is_veto:
             _vetoed_rooms.add(thread_id)
-            mentions = ["@leejongmin1092/scout"]
-            content += "\n\nVETO DIRECTIVES:\n- Please find more concrete evidence on categories with scores < 5."
-            send_content = f"🚨 VETO #1 — Re-investigation Required\n\n{content}\n\nScout, please re-run your research addressing each VETO DIRECTIVE above."
-            logger.info(f"[Risk] VETO issued for room {thread_id[:8]}")
+            directives = directives_from_breakdown(res["breakdown"]) or [
+                "Find concrete evidence for categories scoring below 5/10"
+            ]
+            request = build_research_request(vendor, "risk", directives)
+            mentions = [reply_handle("research")]
+            send_content = (
+                f"🚨 VETO — structured re-investigation requested\n\n{content}\n\n"
+                + serialize(request)
+            )
+            logger.info(
+                f"[Risk] VETO -> research_request {request.request_id} "
+                f"({len(directives)} directives) for room {thread_id[:8]}"
+            )
         else:
             mentions = ["@leejongmin1092/synthesis"]
             send_content = content
