@@ -1,7 +1,14 @@
 import unittest
 
-from research.agent_io import extract_vendor, default_status, build_response
-from research.contract import Status
+from research.agent_io import (
+    extract_vendor,
+    default_status,
+    build_response,
+    resolution_status,
+    reply_handle,
+    run_research_request,
+)
+from research.contract import Status, ResearchRequest
 from research.models import Evidence, EvidenceBundle, Failure, SourceTier
 
 
@@ -69,6 +76,60 @@ class TestBuildResponse(unittest.TestCase):
         bundle = EvidenceBundle(evidence=(evidence(),))
         resp = build_response("V", "r", "research", bundle, status=Status.NEEDS_REINVESTIGATION)
         self.assertEqual(resp.status, Status.NEEDS_REINVESTIGATION)
+
+
+def scoped_bundle(vendor, directive, found=True):
+    query = f"{vendor} {directive}"
+    ev = (evidence(),) if found else ()
+    return EvidenceBundle(evidence=tuple(
+        e.__class__(**{**e.__dict__, "query": query}) for e in ev
+    ), queries_run=(query,))
+
+
+class FakeEngine:
+    def __init__(self, bundle):
+        self._bundle = bundle
+        self.calls = []
+
+    async def gather(self, vendor, goals=None, gap_directives=None, hospital_context=None):
+        self.calls.append((vendor, tuple(goals or ()), tuple(gap_directives or ())))
+        return self._bundle
+
+
+class TestReplyHandle(unittest.TestCase):
+    def test_builds_handle_for_role(self):
+        self.assertEqual(reply_handle("risk"), "@leejongmin1092/risk")
+
+
+class TestResolutionStatus(unittest.TestCase):
+    def test_no_directives_uses_default(self):
+        req = ResearchRequest(request_id="r", requested_by="risk", vendor="V", summary="s")
+        self.assertEqual(resolution_status(req, EvidenceBundle(evidence=(evidence(),))), Status.COMPLETE)
+
+    def test_all_directives_found_is_complete(self):
+        req = ResearchRequest(request_id="r", requested_by="risk", vendor="Veradigm",
+                              summary="s", gap_directives=("confirm CHPL",))
+        bundle = scoped_bundle("Veradigm", "confirm CHPL", found=True)
+        self.assertEqual(resolution_status(req, bundle), Status.COMPLETE)
+
+    def test_unresolved_directive_needs_reinvestigation(self):
+        req = ResearchRequest(request_id="r", requested_by="risk", vendor="Veradigm",
+                              summary="s", gap_directives=("confirm CHPL",))
+        bundle = scoped_bundle("Veradigm", "confirm CHPL", found=False)
+        self.assertEqual(resolution_status(req, bundle), Status.NEEDS_REINVESTIGATION)
+
+
+class TestRunResearchRequest(unittest.IsolatedAsyncioTestCase):
+    async def test_runs_scoped_and_returns_correlated_response(self):
+        req = ResearchRequest(request_id="req-7", requested_by="risk", vendor="Veradigm",
+                              summary="s", gap_directives=("confirm CHPL",))
+        engine = FakeEngine(scoped_bundle("Veradigm", "confirm CHPL", found=True))
+        resp = await run_research_request(req, engine)
+        self.assertEqual(resp.request_id, "req-7")
+        self.assertEqual(resp.responded_by, "research")
+        self.assertEqual(resp.status, Status.COMPLETE)
+        # Engine was called with the gap directives (scoped retrieval).
+        self.assertEqual(engine.calls[0][2], ("confirm CHPL",))
 
 
 if __name__ == "__main__":
