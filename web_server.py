@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, parse_qs
 
 PORT = 8000
@@ -629,7 +630,8 @@ def run_server():
     os.makedirs(WEB_DIR, exist_ok=True)
     
     server_address = ('', PORT)
-    httpd = HTTPServer(server_address, HealthVetHTTPHandler)
+    class ThreadedHTTPServer(ThreadingMixIn, HTTPServer): pass
+    httpd = ThreadedHTTPServer(server_address, HealthVetHTTPHandler)
     print(f"\n=========================================")
     print(f"HealthVet Doctor Dashboard Server Running")
     print(f"URL: http://localhost:{PORT}")
