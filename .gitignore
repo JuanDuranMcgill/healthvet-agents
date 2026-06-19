@@ -6,3 +6,4 @@ __pycache__/
 venv/
 logs/
 db.json
+ARCHITECTURE_ANALYSIS.md
