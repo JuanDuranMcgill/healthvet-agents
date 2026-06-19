@@ -83,6 +83,21 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
             self.send_header('Vary', 'Origin')
         # Always revalidate so updated HTML/JS (e.g. api-base.js) is never stale.
         self.send_header('Cache-Control', 'no-cache')
+        # --- Security headers (all responses) ---
+        self.send_header('Content-Security-Policy',
+                         "default-src 'self'; "
+                         "img-src 'self' data: https:; "
+                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+                         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+                         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com; "
+                         "frame-src https://challenges.cloudflare.com; "
+                         "connect-src 'self' https://srv-dev-01.tail599939.ts.net; "
+                         "base-uri 'self'; object-src 'none'; frame-ancestors 'none'")
+        self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        self.send_header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
         super().end_headers()
 
     def do_OPTIONS(self):

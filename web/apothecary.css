@@ -1,0 +1,55 @@
+/*
+ * HealthVet — Apothecary theme override.
+ * Loaded AFTER style.css. Re-skins the entire token-driven UI to the
+ * white-paper "Apothecary" brand. Hard rule: no em dashes, no middots.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Spectral', Georgia, serif;
+
+  /* Surfaces — bone background, paper cards, white-paper insets */
+  --bg-body: #F4EFE6;
+  --bg-surface: #FBF8F2;
+  --bg-inset: #FFFDF8;
+  --bg-hover: #EFE8DB;
+
+  /* Text — aubergine-ink */
+  --text-primary: #2B2230;
+  --text-secondary: #4A4350;
+  --text-muted: #6B6470;
+
+  /* Borders — warm parchment lines */
+  --border: #E3DCCF;
+  --border-light: #EFE8DB;
+
+  /* Accent — aubergine (primary actions / links) */
+  --accent: #5A4A63;
+  --accent-hover: #473A4F;
+  --accent-ghost: rgba(90, 74, 99, 0.10);
+
+  /* Semantic verdicts: approve=sage, escalate=terracotta, reject=warm brick */
+  --green: #6E8F6B;
+  --red: #A9472F;
+  --amber: #C77B57;
+  --green-ghost: rgba(110, 143, 107, 0.14);
+  --red-ghost: rgba(169, 71, 47, 0.12);
+  --amber-ghost: rgba(199, 123, 87, 0.16);
+
+  /* Softer, paper-like elevation */
+  --shadow-xs: 0 1px 2px rgba(43, 34, 48, 0.04);
+  --shadow-sm: 0 2px 8px rgba(43, 34, 48, 0.05);
+  --shadow-md: 0 6px 20px rgba(43, 34, 48, 0.07);
+  --shadow-lg: 0 16px 44px rgba(43, 34, 48, 0.12);
+}
+
+/* Serif display gets a touch more character */
+h1, h2, h3, .brand-name { letter-spacing: -0.01em; }
+
+/* Two-pill logo mark sits cleanly in the brand chip (replaces icon bg) */
+.brand-icon { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.brand-icon svg { display: block; }
+
+/* Verdict / status chips read as soft paper tags */
+.chip, .badge, .status-chip { font-family: var(--font); letter-spacing: .02em; }

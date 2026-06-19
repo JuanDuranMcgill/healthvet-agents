@@ -1,5 +1,5 @@
 /*
- * Questionnaire UI logic — fetches the form definition from the backend,
+ * Questionnaire UI logic  fetches the form definition from the backend,
  * renders ranking / sliders / deal-breakers / risk-appetite, validates, and
  * submits to /api/submit_questionnaire which builds + saves a HospitalProfile.
  */
@@ -39,7 +39,7 @@ function validateRanks() {
   const vals = [...document.querySelectorAll("#ranks select")].map((s) => s.value);
   const dup = vals.length !== new Set(vals).size;
   document.getElementById("rank-warn").textContent = dup
-    ? "Each rank must be unique — you have duplicate ranks."
+    ? "Each rank must be unique  you have duplicate ranks."
     : "";
   return !dup;
 }
@@ -106,7 +106,7 @@ function renderResult(profile) {
   el.innerHTML = `<h2><i class="fa-solid fa-circle-check" style="color:var(--good)"></i> Profile saved: ${profile.hospital} (v${profile.version})</h2>
     <p style="color:var(--muted);font-size:13px">This is now the active scoring model. Run a vendor assessment and results will be ranked against it.</p>
     ${rows}
-    <p style="font-size:13px;margin-top:14px">Deal-breakers: ${(profile.deal_breakers || []).map((d) => d.factor).join(", ") || "none"} ·
+    <p style="font-size:13px;margin-top:14px">Deal-breakers: ${(profile.deal_breakers || []).map((d) => d.factor).join(", ") || "none"}  
        Thresholds: approve ≥ ${profile.thresholds.approve}, escalate ≥ ${profile.thresholds.escalate}</p>
     <div class="actions"><a class="btn primary" href="index.html">Go to dashboard</a></div>`;
   el.scrollIntoView({ behavior: "smooth" });

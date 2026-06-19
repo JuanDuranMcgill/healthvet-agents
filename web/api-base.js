@@ -22,7 +22,7 @@
   // Expose for non-fetch uses (e.g. links, redirects)
   window.apiUrl = (p) => BASE + p;
 
-  // Auth guard — skip redirects on the login and questionnaire pages themselves.
+  // Auth guard  skip redirects on the login and questionnaire pages themselves.
   const onLoginPage = location.pathname.endsWith("/login.html");
   const onQuestionnaire = location.pathname.endsWith("/questionnaire.html");
   window.addEventListener("DOMContentLoaded", async () => {
@@ -42,7 +42,7 @@
       const nameEl = document.getElementById("hv-user-name");
       if (nameEl && me.name) nameEl.textContent = me.name;
     } catch (e) {
-      // backend unreachable — leave the page as-is (it will show its own errors)
+      // backend unreachable  leave the page as-is (it will show its own errors)
       console.warn("auth check failed", e);
     }
   });

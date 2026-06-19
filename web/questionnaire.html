@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Onboarding Questionnaire — HealthVet</title>
+    <title>Onboarding Questionnaire  HealthVet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg:#0b1020; --panel:#121a2e; --panel2:#0f1729; --line:#22304d; --txt:#e8eefc; --muted:#92a0bd; --accent:#3b82f6; --good:#34d399; --warn:#fbbf24; --bad:#f87171; }
+        :root { --bg:#F4EFE6; --panel:#FBF8F2; --panel2:#FFFDF8; --line:#E3DCCF; --txt:#2B2230; --muted:#6B6470; --accent:#5A4A63; --good:#6E8F6B; --warn:#C77B57; --bad:#A9472F; }
         * { box-sizing:border-box; }
         body { margin:0; font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--txt); }
         .wrap { max-width:860px; margin:0 auto; padding:32px 20px 80px; }
         header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
         header i { color:var(--accent); font-size:24px; }
-        header .t { font-family:Outfit,sans-serif; font-weight:800; font-size:22px; }
+        header .t { font-family:Spectral,sans-serif; font-weight:800; font-size:22px; }
         .sub { color:var(--muted); margin:0 0 26px; font-size:14px; }
         .step { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 22px; margin-bottom:18px; }
-        .step h2 { font-family:Outfit,sans-serif; font-size:16px; margin:0 0 4px; }
+        .step h2 { font-family:Spectral,sans-serif; font-size:16px; margin:0 0 4px; }
         .step .hint { color:var(--muted); font-size:13px; margin:0 0 16px; }
         .rank-row, .slider-row, .db-row { display:flex; align-items:center; gap:14px; padding:9px 0; border-bottom:1px solid var(--panel2); }
         .rank-row:last-child, .slider-row:last-child, .db-row:last-child { border-bottom:none; }
@@ -38,15 +38,15 @@
         .btn.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
         .warnline { color:var(--warn); font-size:13px; min-height:18px; margin-top:4px; }
         #result { display:none; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px; }
-        #result h2 { font-family:Outfit,sans-serif; margin:0 0 12px; }
+        #result h2 { font-family:Spectral,sans-serif; margin:0 0 12px; }
         .bar { height:10px; background:var(--panel2); border-radius:6px; overflow:hidden; margin:6px 0 2px; }
-        .bar > span { display:block; height:100%; background:linear-gradient(90deg,var(--accent),#60a5fa); }
+        .bar > span { display:block; height:100%; background:linear-gradient(90deg,var(--good),var(--warn)); }
         .wrow { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--panel2); }
     </style>
 </head>
 <body>
 <div class="wrap">
-    <header><i class="fa-solid fa-clipboard-list"></i><span class="t">Hospital Onboarding Questionnaire</span></header>
+    <header><svg width="30" height="30" viewBox="0 0 72 72" fill="none"><line x1="15" y1="36" x2="31" y2="53" stroke="#2B2230" stroke-width="13" stroke-linecap="round"/><line x1="31" y1="53" x2="43.5" y2="34.5" stroke="#6E8F6B" stroke-width="13" stroke-linecap="round"/><line x1="43.5" y1="34.5" x2="56" y2="16" stroke="#C77B57" stroke-width="13" stroke-linecap="round"/></svg><span class="t">Hospital Onboarding Questionnaire</span></header>
     <p class="sub">~10 minutes. Your answers build a weighted scoring model used to rank and vet vendors against <em>your</em> hospital's priorities. Editable anytime.</p>
 
     <div class="step">
@@ -55,37 +55,37 @@
     </div>
 
     <div class="step">
-        <h2>1 · Rank your priorities</h2>
+        <h2>1  Rank your priorities</h2>
         <p class="hint">Assign each factor a unique rank (1 = most important … 9 = least). No duplicates.</p>
         <div id="ranks"></div>
         <div class="warnline" id="rank-warn"></div>
     </div>
 
     <div class="step">
-        <h2>2 · Fine-tune top concerns</h2>
-        <p class="hint">1 = low importance · 3 = neutral · 5 = critical.</p>
+        <h2>2  Fine-tune top concerns</h2>
+        <p class="hint">1 = low importance  3 = neutral  5 = critical.</p>
         <div id="sliders"></div>
     </div>
 
     <div class="step">
-        <h2>3 · Deal-breakers</h2>
+        <h2>3  Deal-breakers</h2>
         <p class="hint">Check anything that should hard-reject a vendor regardless of other strengths.</p>
         <div id="dealbreakers" class="choices"></div>
     </div>
 
     <div class="step">
-        <h2>4 · Risk appetite</h2>
+        <h2>4  Risk appetite</h2>
         <div id="appetite" class="choices"></div>
     </div>
 
     <div class="step">
-        <h2>5 · Unknown factors</h2>
+        <h2>5  Unknown factors</h2>
         <p class="hint">When a vendor surfaces something this questionnaire didn't ask about:</p>
         <div id="gapmode" class="choices">
             <label class="choice"><input type="radio" name="gapmode" value="ask" checked>
-                <span><strong>Ask me</strong> — pause and ask one question, then permanently improve this profile (recommended).</span></label>
+                <span><strong>Ask me</strong>  pause and ask one question, then permanently improve this profile (recommended).</span></label>
             <label class="choice"><input type="radio" name="gapmode" value="auto">
-                <span><strong>Auto</strong> — make a best-guess weight and disclose every assumption in the report.</span></label>
+                <span><strong>Auto</strong>  make a best-guess weight and disclose every assumption in the report.</span></label>
         </div>
     </div>
 

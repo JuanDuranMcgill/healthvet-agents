@@ -1,5 +1,5 @@
 /*
- * HealthVet — Application Logic
+ * HealthVet  Application Logic
  * Tabs, Wizard, Vetting Studio, Chart.js, Dark Mode, Command Palette
  */
 
