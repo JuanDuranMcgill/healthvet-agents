@@ -119,6 +119,24 @@ def vendor_from_messages(contents: list[str]) -> str:
     return ""
 
 
+def directives_from_gap_report(report_text: str) -> list[str]:
+    """Turn a Gap report's CRITICAL item lines into re-investigation directives.
+
+    Matches item lines like ``- SOC 2 Type II: UNVERIFIED — CRITICAL — ...`` and
+    ignores summary lines such as ``Critical gaps: 2``.
+    """
+    directives = []
+    for raw in (report_text or "").splitlines():
+        line = raw.strip()
+        if not line.startswith("-") or "CRITICAL" not in line:
+            continue
+        body = line.lstrip("-").strip()
+        item = body.split(":", 1)[0].strip()
+        if item:
+            directives.append(f"Find authoritative evidence for {item} (flagged CRITICAL)")
+    return directives
+
+
 def evidence_digest(bundle: EvidenceBundle, header: str = "Evidence") -> str:
     """Human/LLM-readable digest of a bundle. Snippets are sanitized as untrusted.
 

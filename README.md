@@ -52,7 +52,9 @@ User → @Scout
 
 Two agents call the shared retrieval engine in different lanes: **Scout** runs the
 broad web sweep; **Compliance** runs the regulatory tiers (openFDA, OCR breach)
-itself. The **Research** worker answers gap-directed re-investigation requests.
+itself. The **Research** worker answers gap-directed re-investigation requests —
+both **Gap** (when it flags CRITICAL gaps) and **Risk** (on veto) can post a
+`research_request`, each at most once per session.
 
 ### The Veto Loop (structured re-investigation)
 

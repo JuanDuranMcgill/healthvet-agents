@@ -85,11 +85,13 @@ vendor-controlled page cannot influence its own assessment.
 2. **Parallel evaluation.** Forensics → Compliance → Gap → Risk. Compliance runs
    the engine itself on the **regulatory lane** (openFDA + OCR) — real division
    of labor, not one agent doing everything.
-3. **Gap-directed re-investigation.** If Risk hits a make-or-break hole it posts
-   a `research_request` with specific `gap_directives` to the **standalone
-   Research worker** (a non-LangGraph agent — collaboration across frameworks).
-   The worker runs *scoped* retrieval and replies with a correlated
-   `research_response` (`complete`, or `needs_reinvestigation` if still unresolved).
+3. **Gap-directed re-investigation.** When **Gap** flags CRITICAL gaps (verdict
+   INSUFFICIENT) or **Risk** vetoes, it posts a `research_request` with specific
+   `gap_directives` to the **standalone Research worker** (a non-LangGraph agent
+   — collaboration across frameworks). The worker runs *scoped* retrieval and
+   replies with a correlated `research_response` (`complete`, or
+   `needs_reinvestigation` if still unresolved). Each requester escalates at most
+   once per session.
 4. **Synthesis.** Risk makes its final, non-vetoable verdict and hands to
    Synthesis for the auditable report.
 

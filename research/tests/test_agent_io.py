@@ -10,6 +10,7 @@ from research.agent_io import (
     build_research_request,
     vendor_from_messages,
     directives_from_breakdown,
+    directives_from_gap_report,
     evidence_digest,
 )
 from research.contract import Status, ResearchRequest, ResearchResponse, serialize
@@ -174,6 +175,29 @@ class TestDirectivesFromBreakdown(unittest.TestCase):
     def test_no_low_scores_yields_no_directives(self):
         breakdown = [{"category": "cost", "score": 9}]
         self.assertEqual(directives_from_breakdown(breakdown, threshold=5), [])
+
+
+class TestDirectivesFromGapReport(unittest.TestCase):
+    REPORT = (
+        "**GAP ANALYSIS REPORT: Veradigm**\n"
+        "- SOC 2 Type II: UNVERIFIED — CRITICAL — no report found\n"
+        "- HIPAA BAA: MISSING — [one line]\n"
+        "- FDA clearance: MISSING — CRITICAL — none found\n"
+        "Critical gaps: 2 — [SOC 2, FDA] | Moderate gaps: 1\n"
+        "Overall evidence verdict: INSUFFICIENT\n"
+    )
+
+    def test_extracts_only_critical_item_lines(self):
+        directives = directives_from_gap_report(self.REPORT)
+        self.assertEqual(len(directives), 2)
+        self.assertTrue(any("SOC 2 Type II" in d for d in directives))
+        self.assertTrue(any("FDA clearance" in d for d in directives))
+        # The "Critical gaps:" summary line is not an item directive.
+        self.assertFalse(any("Critical gaps" in d for d in directives))
+
+    def test_no_critical_lines_yields_none(self):
+        report = "- SOC 2: VERIFIED — ok\nOverall evidence verdict: SUFFICIENT_TO_DECIDE"
+        self.assertEqual(directives_from_gap_report(report), [])
 
 
 class TestEvidenceDigest(unittest.TestCase):
