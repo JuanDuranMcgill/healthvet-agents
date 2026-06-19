@@ -7,3 +7,4 @@ venv/
 logs/
 db.json
 ARCHITECTURE_ANALYSIS.md
+.superpowers/
