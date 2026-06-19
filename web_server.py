@@ -11,6 +11,7 @@ load_dotenv()
 
 import auth_google
 import web_integration
+import rate_limit
 
 PORT = int(os.environ.get("PORT", "8000"))
 WEB_DIR = os.path.join(os.path.dirname(__file__), 'web')
@@ -441,6 +442,18 @@ class HealthVetHTTPHandler(SimpleHTTPRequestHandler):
         path = parsed_url.path
 
         if not self._require_auth(path):
+            return
+
+        # Per-user rate limiting (owner email exempt via UNLIMITED_EMAILS).
+        session, _ = self._session()
+        email = session["email"] if session else None
+        allowed, retry = rate_limit.enforce(email, path)
+        if not allowed:
+            self._send_json(
+                {"error": "rate_limited",
+                 "message": "You've hit the usage limit for this demo. Try again later.",
+                 "retry_after_seconds": retry},
+                status=429, extra_headers={"Retry-After": str(retry)})
             return
 
         if path == '/api/submit_questionnaire':
