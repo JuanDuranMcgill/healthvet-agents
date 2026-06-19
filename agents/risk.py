@@ -89,7 +89,7 @@ def graph_factory(band_tools):
         
         # We will use a default test profile if none is provided, or load one
         # For this integration, we'll assume the slug is in env or default
-        profile_slug = os.environ.get("HOSPITAL_PROFILE", "mercy-rural-health")
+        profile_slug = os.environ.get("HOSPITAL_PROFILE", "test-hospital")
         profile = HospitalProfile(profile_slug).load()
         if not profile.categories:
             # Fallback mock for testing if no profile generated yet

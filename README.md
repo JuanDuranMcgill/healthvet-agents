@@ -66,6 +66,12 @@ Risk has veto authority. If it finds 2+ critical evidence gaps, it rejects the f
 - [Featherless AI](https://featherless.ai) — serverless open-source model inference (Qwen 72B)
 - [Band](https://band.ai) — multi-agent coordination layer
 
+**Why this provider stack?**
+
+[AI/ML API](https://aimlapi.com) gives us a single OpenAI-compatible endpoint to access multiple model tiers without managing separate integrations. HealthVet uses this to cost-optimize across agents: `gpt-4o-mini` for fast structured extraction (Compliance), `gpt-4o` for deep adversarial reasoning (Scout, Forensics, Gap, Risk). One API key, one SDK, two model tiers — exactly what a production multi-agent system needs. For teams building regulated-industry pipelines where model selection per task actually matters, AI/ML API makes that practical without the overhead of maintaining multiple provider clients.
+
+[Featherless AI](https://featherless.ai) powers Synthesis — the agent that writes the final vendor trust report delivered to the hospital. We chose an open-weight model (`Qwen2.5-72B-Instruct`) here deliberately: in a regulated industry, the compliance artifact needs to be reproducible and auditable end-to-end. Open-weight models mean a hospital's legal or IT team can inspect exactly what model produced their vendor report — not a black box. Featherless makes running a 72B model serverless and instant, with no GPU infrastructure to manage. For healthcare and other regulated domains where open-weight inference is a compliance requirement, not just a preference, Featherless fills a gap that hosted-only providers cannot.
+
 ---
 
 ## Setup
@@ -198,15 +204,15 @@ synthesis:
 
 ### Step 5 — Update agent @mentions to match your handle
 
-The agents reference each other by @handle (e.g. `@handmorin/scout`). You need to update these to match your Band username.
+The agents reference each other by @handle. You need to update these to match your Band username.
 
-Search for all @mentions across the agent files and replace `handmorin` with your handle:
+Search for all @mentions across the agent files:
 
 ```bash
-grep -r "handmorin" agents/
+grep -r "leejongmin1092" agents/
 ```
 
-Then open each file and replace `@handmorin/` with `@yourhandle/`. The agents that send @mentions are: `scout.py`, `forensics.py`, `compliance.py`, `gap.py`, `risk.py`, and `synthesis.py`.
+Then replace every occurrence of `leejongmin1092` with your own Band handle. The agents that send @mentions are: `scout.py`, `forensics.py`, `compliance.py`, `gap.py`, `risk.py`, and `synthesis.py`.
 
 ---
 
@@ -225,6 +231,35 @@ tail logs/scout.log logs/risk.log logs/synthesis.log
 ```
 
 You should see `Agent started: Scout (band-sdk 1.0.0)` for each.
+
+---
+
+### Step 7 — (Optional) Run the hospital onboarding wizard
+
+Before vetting a vendor, configure the hospital's priorities. This creates a weighted scoring profile used by the Risk agent:
+
+```bash
+python -m questionnaire.cli onboarding my-hospital
+```
+
+The wizard walks through 4 phases: ranking 9 evaluation categories, fine-tuning priority sliders, selecting deal-breakers (e.g. missing SOC 2, unresolved breach), and choosing risk appetite. The profile is saved to `questionnaire/profiles/my-hospital.yaml`. Set `HOSPITAL_PROFILE=my-hospital` in `.env` so Risk loads it automatically.
+
+If you skip this step, Risk falls back to a balanced default profile.
+
+---
+
+### Step 8 — (Optional) Start the web dashboard
+
+```bash
+python web_server.py
+```
+
+Opens a dashboard at `http://localhost:8000` where you can:
+- Start a vendor assessment by name (triggers the full 6-agent pipeline)
+- Watch live status as each agent reports in
+- View the quantitative scorecard with category breakdown
+- Compare two vendors side by side
+- Export results as CSV
 
 ---
 
@@ -353,8 +388,21 @@ healthvet-agents/
 │   ├── forensics.py     # Document and certification analysis
 │   ├── compliance.py    # Regulatory standing checker (graph_factory)
 │   ├── gap.py           # Evidence gap analyst (graph_factory)
-│   ├── risk.py          # Final decision authority + veto loop (graph_factory)
+│   ├── risk.py          # Final decision authority + veto loop + scoring (graph_factory)
 │   └── synthesis.py     # Auditable trust report generator
+├── questionnaire/
+│   ├── cli.py           # 4-phase hospital onboarding wizard (CLI)
+│   ├── profile.py       # HospitalProfile — weighted categories, deal-breakers, thresholds
+│   ├── scorer.py        # Quantitative fit scoring engine (0–100, APPROVE/ESCALATE/REJECT)
+│   ├── extractor.py     # LLM extraction of 9-category evidence scores from agent reports
+│   ├── gap.py           # Gap resolution for uncovered evidence categories
+│   └── profiles/        # Saved hospital profiles (YAML)
+├── web/
+│   ├── index.html       # Dashboard UI
+│   ├── app.js           # Live polling, vendor comparison, scorecard charts
+│   └── style.css        # Styles
+├── web_server.py        # HTTP dashboard server (port 8000)
+├── run_agents.py        # Alternative launcher (supports --agent flag for single agent)
 ├── start.sh             # Starts all 6 agents with per-agent log files
 ├── .env.example         # API key template (copy to .env)
 ├── agent_config.yaml.example  # Band credential template (copy to agent_config.yaml)
@@ -376,13 +424,18 @@ healthvet-agents/
 
 ---
 
-## Roadmap
+## Features
 
-- **Interactive graph view** — visual trust profile dashboard with nodes for each evidence type and edges showing contradictions
-- **Automated scoring rubric** — structured pros/cons score with a defensible, configurable weighting system
-- **Criteria setup wizard** — 10-minute conversational onboarding where the system learns the hospital's specific requirements before vetting
-- **Automated email outreach** — when agents detect a missing document (expired cert, unverifiable reference), auto-draft a request to the vendor
-- **Proactive gap notification** — route stalls as low-priority async notifications rather than blocking the workflow
+| Feature | Status |
+|---|---|
+| 6-agent sequential pipeline | ✅ Done |
+| Risk veto loop (re-investigation, capped at 1) | ✅ Done |
+| Quantitative scoring rubric (weighted fit 0–100, deal-breakers) | ✅ Done |
+| Hospital criteria setup wizard (4-phase CLI onboarding) | ✅ Done |
+| Web dashboard (live status, scorecard, vendor comparison, CSV export) | ✅ Done |
+| Automated email outreach on ESCALATE verdict | ✅ Done |
+| Interactive graph view (frontend) | 🔄 In progress |
+| Proactive gap notification | 📋 Planned |
 
 ---
 

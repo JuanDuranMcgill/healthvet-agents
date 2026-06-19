@@ -1,16 +1,1 @@
-{
-    "563ed0b0-38db-4ef6-aee4-a20b530cda7e": {
-        "task_id": "563ed0b0-38db-4ef6-aee4-a20b530cda7e",
-        "vendor": "Veradigm",
-        "start_time": 1781799884.1754527,
-        "status": "running",
-        "verdict": "PENDING"
-    },
-    "1e575400-20d4-4782-b506-0aee81ed3ae7": {
-        "task_id": "1e575400-20d4-4782-b506-0aee81ed3ae7",
-        "vendor": "Veradigm",
-        "start_time": 1781800329.6567304,
-        "status": "running",
-        "verdict": "PENDING"
-    }
-}
+{}
