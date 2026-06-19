@@ -53,3 +53,31 @@ h1, h2, h3, .brand-name { letter-spacing: -0.01em; }
 
 /* Verdict / status chips read as soft paper tags */
 .chip, .badge, .status-chip { font-family: var(--font); letter-spacing: .02em; }
+
+/* ===== Assess tab: fill the viewport height (chat panel grows) ===== */
+#tab-studio.active { display: flex; flex-direction: column; min-height: 100%; }
+.studio-grid { flex: 1; min-height: 0; align-items: stretch; }
+.chat-panel { height: auto !important; min-height: 0; }
+.chat-feed { flex: 1 1 auto !important; min-height: 0; overflow-y: auto; }
+/* keep the left assessment panel anchored at the top, not stretched awkwardly */
+.studio-sidebar-panel { align-self: start; }
+
+/* ===== Report hero: balanced, less dead space ===== */
+.report-hero { padding: 22px 28px; align-items: center; }
+.report-hero-left { gap: 14px; }
+/* group the score ring with its own breathing room on the right */
+.score-ring-wrap { flex: 0 0 auto; }
+/* report tab also fills height so it doesn't trail off into empty space */
+#tab-analysis.active { display: flex; flex-direction: column; min-height: 100%; }
+#tab-analysis.active .report-grid { flex: 1; min-height: 0; }
+
+/* ===== Up to 3 concurrent assessments: side-by-side run columns ===== */
+#chat-console-box.multi { display: flex; flex-direction: row; gap: 14px; align-items: stretch; padding: 14px; }
+.run-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+           border: 1px solid var(--border); border-radius: 12px; background: var(--bg-inset); overflow: hidden; }
+.run-col-head { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                padding: 10px 12px; border-bottom: 1px solid var(--border);
+                font-family: var(--font-heading); font-size: 14px; background: var(--bg-surface); }
+.run-col-feed { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+.run-col-feed .msg-bubble { font-size: 12.5px; }
+.run-badge { font-size: 10px; white-space: nowrap; }

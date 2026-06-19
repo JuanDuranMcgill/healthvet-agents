@@ -270,56 +270,94 @@ function initStudio() {
     });
 }
 
-// ===== VETTING WORKFLOW =====
+// ===== VETTING WORKFLOW (up to 3 concurrent) =====
+const MAX_RUNS = 3;
+let runs = []; // { taskId, vendor, intervalId, feedEl, badgeEl, msgCount, status }
+
+function activeRunCount() { return runs.filter(r => r.status === 'running').length; }
+
+function updateRunButton() {
+    const btn = document.getElementById('btn-start-vetting');
+    if (activeRunCount() >= MAX_RUNS) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 3 running…';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = 'Run Assessment';
+    }
+}
+
 function startVettingWorkflow() {
-    document.getElementById('btn-start-vetting').disabled = true;
-    document.getElementById('btn-start-vetting').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Running…';
-    document.getElementById('chat-console-box').innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-pulse"></i><p>Initializing agent orchestration…</p></div>';
+    const input = document.getElementById('studio-vendor-select');
+    const vendor = (input && input.value.trim()) || selectedVendor;
+    if (!vendor) { showToast('Please enter a vendor name.'); return; }
+    // Free up finished slots, then enforce the cap on *running* assessments.
+    if (runs.length >= MAX_RUNS) runs = runs.filter(r => r.status === 'running');
+    if (activeRunCount() >= MAX_RUNS) { showToast('You can run at most 3 assessments at once.'); return; }
+
+    const box = document.getElementById('chat-console-box');
+    if (box.querySelector('.empty-state') && !box.classList.contains('multi')) box.innerHTML = '';
+    box.classList.add('multi');
     document.getElementById('room-status-badge').innerText = 'Running';
-    document.querySelectorAll('.agent-chip').forEach(p => { p.classList.remove('active', 'veto'); });
+
+    const col = document.createElement('div');
+    col.className = 'run-col';
+    col.innerHTML = `
+        <div class="run-col-head">
+            <strong>${vendor}</strong>
+            <span class="badge run-badge">Starting…</span>
+        </div>
+        <div class="run-col-feed">
+            <div class="empty-state"><i class="fa-solid fa-spinner fa-pulse"></i><p>Initializing…</p></div>
+        </div>`;
+    box.appendChild(col);
+
+    const run = {
+        taskId: null, vendor, intervalId: null,
+        feedEl: col.querySelector('.run-col-feed'),
+        badgeEl: col.querySelector('.run-badge'),
+        headEl: col.querySelector('.run-col-head'),
+        msgCount: 0, status: 'running',
+    };
+    runs.push(run);
+    updateRunButton();
 
     fetch('/api/start_vetting', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendor: selectedVendor, live: true })
+        body: JSON.stringify({ vendor, live: true })
     }).then(r => r.json()).then(data => {
-        currentTaskId = data.task_id;
-        if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(pollVettingStatus, 1500);
-    }).catch(err => console.error("Start error", err));
+        run.taskId = data.task_id;
+        run.intervalId = setInterval(() => pollRun(run), 1500);
+    }).catch(err => { console.error('Start error', err); run.badgeEl.innerText = 'Error'; run.status = 'error'; updateRunButton(); });
 }
 
-function pollVettingStatus() {
-    if (!currentTaskId) return;
-    fetch(`/api/vetting_status?task_id=${currentTaskId}`)
+function pollRun(run) {
+    if (!run.taskId) return;
+    fetch(`/api/vetting_status?task_id=${run.taskId}`)
     .then(r => r.json())
     .then(data => {
-        updateChatLogs(data.logs);
+        renderRun(run, data.logs || []);
+        run.badgeEl.innerText = data.status === 'completed' ? 'Completed' : 'Running';
         if (data.status === 'completed') {
-            clearInterval(pollingInterval);
-            finishVetting();
+            clearInterval(run.intervalId);
+            run.status = 'completed';
+            finishRun(run);
         }
-    }).catch(() => clearInterval(pollingInterval));
+    }).catch(() => clearInterval(run.intervalId));
 }
 
-function updateChatLogs(logs) {
-    const feed = document.getElementById('chat-console-box');
-    const currentCount = feed.querySelectorAll('.chat-msg').length;
-    if (logs.length > currentCount && feed.querySelector('.empty-state')) {
-        feed.innerHTML = '';
-    }
+function renderRun(run, logs) {
+    const feed = run.feedEl;
+    if (logs.length > run.msgCount && feed.querySelector('.empty-state')) feed.innerHTML = '';
     let activeAgent = '';
-    for (let i = currentCount; i < logs.length; i++) {
+    for (let i = run.msgCount; i < logs.length; i++) {
         const log = logs[i];
         const div = document.createElement('div');
         div.className = 'chat-msg';
-        const isVeto = log.message.includes('VETO:');
-
-        const now = new Date();
-        now.setSeconds(now.getSeconds() - (logs.length - i) * 2);
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const isVeto = (log.message || '').includes('VETO');
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const avatarClass = log.agent.toLowerCase().split(' ')[0];
         const initial = log.agent.charAt(0).toUpperCase();
-
         div.innerHTML = `
             <div class="chat-avatar ${avatarClass}">${initial}</div>
             <div class="msg-content">
@@ -328,25 +366,28 @@ function updateChatLogs(logs) {
             </div>`;
         feed.appendChild(div);
         activeAgent = log.agent;
-        if (isVeto) {
-            const riskNode = document.getElementById('node-risk');
-            if (riskNode) riskNode.classList.add('veto');
-        }
     }
+    run.msgCount = logs.length;
     feed.scrollTop = feed.scrollHeight;
     if (activeAgent) {
-        document.querySelectorAll('.agent-chip').forEach(n => n.classList.remove('active'));
         const activeNode = document.getElementById(`node-${activeAgent}`);
         if (activeNode) activeNode.classList.add('active');
     }
 }
 
-function finishVetting() {
-    document.getElementById('btn-start-vetting').disabled = false;
-    document.getElementById('btn-start-vetting').innerHTML = 'Run Assessment';
-    document.getElementById('room-status-badge').innerText = 'Completed';
+function finishRun(run) {
+    updateRunButton();
     document.getElementById('nav-analysis').classList.remove('disabled');
-    setTimeout(() => switchTab('analysis'), 1000);
+    // Clicking a finished run opens its Trust Report.
+    run.headEl.style.cursor = 'pointer';
+    run.headEl.title = 'View Trust Report';
+    run.headEl.onclick = () => {
+        currentTaskId = run.taskId;
+        selectedVendor = run.vendor;
+        switchTab('analysis');
+    };
+    run.badgeEl.innerHTML = 'Completed &nbsp;<i class="fa-solid fa-arrow-right" style="font-size:10px"></i>';
+    if (activeRunCount() === 0) document.getElementById('room-status-badge').innerText = 'Completed';
 }
 
 // ===== SCORING =====
